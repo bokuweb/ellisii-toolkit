@@ -71,21 +71,16 @@ pub struct Chunk {
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum HitSource {
     /// ベクトル類似度のみでヒット
+    #[default]
     Vector,
     /// FTS / BM25 キーワードマッチでヒット
     Keyword,
     /// 両方でヒット (RRF 統合後)
     Hybrid,
-}
-
-impl Default for HitSource {
-    fn default() -> Self {
-        HitSource::Vector
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

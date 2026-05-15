@@ -13,6 +13,9 @@ use ndlocr_lite_rs::pipeline::reading_order::sort_bboxes_in_reading_order;
 use ndlocr_lite_rs::postprocess::page_rules::apply_structural_rules;
 use std::sync::{Arc, OnceLock};
 
+/// `(x0, y0, x1, y1, cropped_image)` — 1 行の bbox とその切り出し画像。
+type LineCrop = (usize, usize, usize, usize, CroppedImage);
+
 pub struct NdlocrBackend {
     pub config: OcrConfig,
     /// parseq の Session を保持する。OCR を呼ぶたびにモデルを load し直すと
@@ -191,11 +194,7 @@ impl OcrBackend for NdlocrBackend {
 /// 1 page ぶん load + DEIM + 行 crop。失敗は Err として上に返す (呼び出し側で
 /// warn + 空 Vec 扱いにできる)。crop は (x0, y0, x1, y1, CroppedImage) の Vec で
 /// 読み順 sort 済み。
-fn prepare_page_crops(
-    path: &str,
-    cfg: &OcrConfig,
-    deim: &DeimPool,
-) -> Result<Vec<(usize, usize, usize, usize, CroppedImage)>> {
+fn prepare_page_crops(path: &str, cfg: &OcrConfig, deim: &DeimPool) -> Result<Vec<LineCrop>> {
     let img = nd_io::load_rgb_u8(std::path::Path::new(path))
         .map_err(|e| Error::Ocr(format!("load: {e}")))?;
     let dets = deim
@@ -244,7 +243,7 @@ fn ocr_images_batch_blocking(
     // Step 1: 全ページぶん load + DEIM + crop。DEIM は pool 内 N session を
     // try_lock で奪い合うので、rayon 並列で投げて pool 並列度ぶん実並列に
     // 進む。load/DEIM 失敗は warn にして空 crop で続行 (per-page failure)。
-    let per_page_crops: Vec<Vec<(usize, usize, usize, usize, CroppedImage)>> = paths
+    let per_page_crops: Vec<Vec<LineCrop>> = paths
         .par_iter()
         .map(|path| match prepare_page_crops(path, cfg, deim) {
             Ok(c) => c,
@@ -290,7 +289,7 @@ fn ocr_images_batch_blocking(
 
     // Step 4: origin で per-page に振り分け、min_line_confidence で足切り。
     let mut per_page_blocks: Vec<Vec<OcrBlock>> = (0..paths.len()).map(|_| Vec::new()).collect();
-    for ((page_idx, line_idx), rec) in origins.into_iter().zip(recs.into_iter()) {
+    for ((page_idx, line_idx), rec) in origins.into_iter().zip(recs) {
         if rec.mean_confidence < cfg.min_line_confidence || rec.text.trim().is_empty() {
             continue;
         }
@@ -422,7 +421,7 @@ fn ocr_image_blocking(
     }
 
     let mut out: Vec<OcrBlock> = Vec::with_capacity(recs.len());
-    for ((x0, y0, x1, y1, _), rec) in crops.into_iter().zip(recs.into_iter()) {
+    for ((x0, y0, x1, y1, _), rec) in crops.into_iter().zip(recs) {
         if rec.mean_confidence < cfg.min_line_confidence || rec.text.trim().is_empty() {
             continue;
         }

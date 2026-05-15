@@ -698,6 +698,7 @@ fn absorb_preceding_paren_title(text: &str, start: usize, lower_bound: usize) ->
 /// - `ARTICLE 1` / `ARTICLE 1.1` / `ARTICLE I` (Roman) / `Article 1`
 /// - `Section 1` / `Section 1.1.1` / `SECTION 1` / `Sec. 1`
 /// - 行頭の `1.` / `1.1` / `2.` などの十進ナンバリング (大文字始まりの本文付き)
+///
 /// を境界として扱う。括弧書きの sub-item `(a)` `(i)` は本文扱いで取り込む。
 fn split_english_contract_articles(text: &str) -> Vec<LawArticle> {
     let pattern = english_article_regex();

@@ -372,7 +372,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn body_vocab_novelty_paraphrase_case_is_higher_than_literal() {
         // 特許法風: caption が短く、body が caption に無い概念語彙を持つ → 高 novelty
         let para = body_vocab_novelty("発明", "自然法則を利用した技術的思想の創作のうち高度のもの");

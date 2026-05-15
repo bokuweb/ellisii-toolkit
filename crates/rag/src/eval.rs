@@ -88,8 +88,8 @@ pub fn ndcg_at_k(predicted: &[String], relevant: &[String], k: usize) -> f32 {
     }
     let limit = predicted.len().min(k);
     let mut dcg = 0.0_f32;
-    for i in 0..limit {
-        if relevant.iter().any(|r| r == &predicted[i]) {
+    for (i, p) in predicted.iter().take(limit).enumerate() {
+        if relevant.iter().any(|r| r == p) {
             dcg += 1.0 / ((i as f32 + 2.0).log2());
         }
     }

@@ -3,6 +3,7 @@
 //! 実 LLM (llama-cpp-2) は別経路で結合する想定。ここでは
 //! - judge プロンプトに正しく context/answer を埋め込んでいるか
 //! - LLM 応答 (テキスト) からスコアを正しくパースできるか
+//!
 //! の 2 点だけをテストする。
 
 use async_trait::async_trait;

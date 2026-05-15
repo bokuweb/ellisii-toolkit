@@ -57,7 +57,10 @@ jobs:
           shared-key: ${{ matrix.os }}-clippy
           cache-on-failure: true
 
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # Library and binary targets only. Tests / examples / benches have
+      # different style conventions (looser data shapes, scripted
+      # workflows) and are best policed by `cargo test` compiling them.
+      - run: cargo clippy --workspace --lib --bins --all-features -- -D warnings
 
   test:
     name: cargo test

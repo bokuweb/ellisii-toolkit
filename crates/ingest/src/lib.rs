@@ -282,10 +282,7 @@ impl<E: Embedder, S: VectorStore> Ingestor<E, S> {
             // ("2 章のアンチパターンは?", "意思表示について教えて") の retrieval
             // 命中率が上がる。store には `chunk.text` のままを保存する (citation
             // 表示や rerank 入力として heading が二重に出ないようにするため)。
-            let texts: Vec<String> = batch
-                .iter()
-                .map(|c| augment_text_for_embedding(c))
-                .collect();
+            let texts: Vec<String> = batch.iter().map(augment_text_for_embedding).collect();
             let embeddings = self.embedder.embed(&texts).await?;
             if embeddings.len() != batch.len() {
                 return Err(Error::Embed("batch size mismatch".into()));
@@ -401,7 +398,8 @@ fn pages_without_text(total: u32, parsed_blocks: &[ParsedBlock]) -> Vec<u32> {
 /// 本版は:
 ///   - upstream `then(rasterize)` が **直列に** ページを 1 枚ずつラスタライズ
 ///   - downstream `map(ocr).buffer_unordered(N)` が **並列に** OCR を消費
-///   → rasterize 1 が走る隣で OCR N が走る (= 真のパイプライン)。
+///
+/// → rasterize 1 が走る隣で OCR N が走る (= 真のパイプライン)。
 ///
 /// 性能見積り: rasterize ~50-100ms / OCR ~5s / N=4 で OCR 律速 → ~1.25s/page。
 /// SQL アンチパターン PDF 330p で 50 分 → 7 分相当 (CoreML 抜きでも)。

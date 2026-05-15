@@ -145,7 +145,7 @@ mod imp {
             } else if flat.len() == n * 2 {
                 // [N, 2] の場合は positive class の logit (index=1) を使う
                 (0..n).map(|i| flat[i * 2 + 1]).collect()
-            } else if flat.len() % n == 0 {
+            } else if flat.len().is_multiple_of(n) {
                 let step = flat.len() / n;
                 (0..n).map(|i| flat[i * step]).collect()
             } else {
@@ -189,7 +189,7 @@ mod imp {
             let threshold = self.cfg.keep_threshold;
             let mut scored: Vec<ScoredSentence> = sentences
                 .into_iter()
-                .zip(scores.into_iter())
+                .zip(scores)
                 .map(|(s, sc)| ScoredSentence {
                     text: s,
                     score: sc,

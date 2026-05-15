@@ -144,8 +144,7 @@ impl EllisiiBuilder {
     /// `dim` は埋め込み次元 (embedder と一致させる)。
     pub fn with_store_sqlite<P: AsRef<Path>>(mut self, db_path: P, dim: usize) -> Result<Self> {
         let tokenizer: Arc<dyn JpTokenizer> = Arc::new(CharBigramTokenizer::new());
-        let store =
-            SqliteStore::open_with_tokenizer(db_path.as_ref().to_path_buf(), dim, tokenizer)?;
+        let store = SqliteStore::open_with_tokenizer(db_path.as_ref(), dim, tokenizer)?;
         self.store = Some(Arc::new(store));
         Ok(self)
     }
@@ -376,6 +375,7 @@ impl VectorStore for DynStore {
 // ─── Options ─────────────────────────────────────────────────────────────
 
 /// [`Ellisii::index_dir`] のオプション。
+#[derive(Default)]
 pub struct IndexOptions {
     /// 取り込む拡張子の許可リスト (lowercase, ドット無し)。`None` なら自動判定
     /// ([`detect_kind`] が認識する種別すべて) を取り込む。
@@ -390,18 +390,6 @@ pub struct IndexOptions {
     /// I/O bound (parser + embed) なので 4〜8 程度まで上げると効果的。
     /// **進捗コールバックは順序を保証しない** (並列起動順)。
     pub concurrency: Option<usize>,
-}
-
-impl Default for IndexOptions {
-    fn default() -> Self {
-        Self {
-            include_extensions: None,
-            follow_hidden: false,
-            follow_symlinks: false,
-            on_progress: None,
-            concurrency: None,
-        }
-    }
 }
 
 /// `index_dir` 中の各ファイル状態通知。
@@ -728,6 +716,11 @@ const DEFAULT_RAG_SYSTEM: &str = "あなたは厳密な参考文献付きアシ�
 
 // ─── Ellisii (facade) ────────────────────────────────────────────────────
 
+/// Lazily-built `(chunk_id, label)` list used by the caption / heading /
+/// defined-term rerankers. Wrapped in `Arc` so each search call can share
+/// the snapshot without copying.
+type CaptionListCache = std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>;
+
 pub struct Ellisii {
     embedder: Arc<dyn Embedder>,
     store: Arc<dyn VectorStore>,
@@ -739,16 +732,16 @@ pub struct Ellisii {
     ingestor: Ingestor<DynEmbedder, DynStore>,
     notebook_id: Uuid,
     /// caption rerank 用の lazy cache。ingest 後に invalidate される。
-    caption_cache: std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>,
+    caption_cache: CaptionListCache,
     /// caption の TF-IDF 重み (`caption -> [0,1]` の hashmap)。caption_cache と一緒に
     /// 構築 / invalidate される。Run 12 で観測された「同種 caption が複数文書に出ると
     /// 正解外の chunk を引き上げる」問題の対策。
     caption_idf_cache: std::sync::Mutex<Option<Arc<std::collections::HashMap<String, f32>>>>,
     /// heading rerank 用の lazy cache。caption と同じく ingest で invalidate される。
-    heading_cache: std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>,
+    heading_cache: CaptionListCache,
     /// Run 42: 本文中の定義語 (`「X」という。`) を `(chunk_id, term)` で 1 row/term。
     /// caption / heading と同じく lazy build。`invalidate_caption_cache` で同時破棄される。
-    defined_terms_cache: std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>,
+    defined_terms_cache: CaptionListCache,
     /// Run 53/54: `heading_density()` の lazy cache。`auto_heading_rerank` の判定で
     /// 毎 search 毎に store を叩かないようにする。`invalidate_caption_cache` で同時破棄。
     heading_density_cache: std::sync::Mutex<Option<f32>>,
@@ -1089,6 +1082,7 @@ impl Ellisii {
     ///
     /// `variant_caption_filter_threshold > 0.0` で、生成された variants のうち corpus caption
     /// との max overlap が threshold 未満のものを drop する (元クエリは常に保持)。Run 33 followup。
+    #[allow(clippy::too_many_arguments)]
     async fn hybrid_pool(
         &self,
         query: &str,
@@ -1142,7 +1136,7 @@ impl Ellisii {
         let mut rankings: Vec<(Vec<SearchHit>, f32)> = Vec::with_capacity(queries.len() * 2);
         for (i, q) in queries.iter().enumerate() {
             let q_w = if i == 0 { 1.0 } else { variant_weight };
-            let q_emb = self.embedder.embed(&[q.clone()]).await?;
+            let q_emb = self.embedder.embed(std::slice::from_ref(q)).await?;
             let vec_hits = self
                 .store
                 .search(Some(self.notebook_id), &q_emb[0], per_ranking_top_k)
@@ -1173,7 +1167,7 @@ impl Ellisii {
         let idf = self.caption_idf().await?;
 
         // 1) pool 内 boost (caption only) — IDF 重み付き。
-        ellisii_rag::rerank::caption_boost_in_place_with_idf(query, pool, 1.0, &*idf);
+        ellisii_rag::rerank::caption_boost_in_place_with_idf(query, pool, 1.0, &idf);
 
         // 2) caption-index 全走査
         if captions.is_empty() {
@@ -1191,7 +1185,7 @@ impl Ellisii {
             });
             return Ok(());
         }
-        self.inject_from_index(query, pool, &captions, 8, 1.5, &*idf)
+        self.inject_from_index(query, pool, &captions, 8, 1.5, &idf)
             .await?;
 
         // 3) defined-terms index (Run 42): body 中の `「X」という。` 系定義語を
@@ -1484,7 +1478,7 @@ impl Ellisii {
             let headings = self.store.all_headings(Some(self.notebook_id)).await?;
             let rich = headings
                 .iter()
-                .filter(|(_, h)| h.chars().count() >= 8 && h.chars().any(|c| !c.is_ascii()))
+                .filter(|(_, h)| h.chars().count() >= 8 && !h.is_ascii())
                 .count();
             rich as f32 / total as f32
         };

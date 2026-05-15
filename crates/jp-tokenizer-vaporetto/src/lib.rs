@@ -78,7 +78,6 @@ pub use imp::VaporettoTokenizer;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ellisii_jp_tokenizer_core::JpTokenizer;
     use std::path::PathBuf;
 
     #[test]

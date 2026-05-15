@@ -191,17 +191,11 @@ impl LlamaConfig {
             is_cpu,
             detected_total,
         );
-        if env_threads.is_none() && detected_pcores.is_some() && is_cpu {
-            tracing::info!(
-                "llama n_threads auto-pinned to {} P-cores (hybrid CPU detected)",
-                detected_pcores.unwrap()
-            );
+        if let (None, Some(pcores), true) = (&env_threads, detected_pcores, is_cpu) {
+            tracing::info!("llama n_threads auto-pinned to {pcores} P-cores (hybrid CPU detected)",);
         }
-        if env_threads_batch.is_none() && detected_total.is_some() && is_cpu {
-            tracing::info!(
-                "llama n_threads_batch auto-pinned to {} physical cores (P+E)",
-                detected_total.unwrap()
-            );
+        if let (None, Some(total), true) = (&env_threads_batch, detected_total, is_cpu) {
+            tracing::info!("llama n_threads_batch auto-pinned to {total} physical cores (P+E)",);
         }
 
         // KV cache 型の tier-based 自動既定:
@@ -332,7 +326,7 @@ pub fn detect_runtime_mode() -> RuntimeMode {
     // Intel Mac でも Metal は使えるが、unified ではないので保守的に CPU 扱い。
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
-        return RuntimeMode::Unified;
+        RuntimeMode::Unified
     }
     // それ以外 (Linux / Windows / Intel Mac):
     //   nvidia-smi が叩けて GPU が返るなら DiscreteGpu に倒す。

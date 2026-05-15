@@ -73,7 +73,7 @@ pub fn max_caption_overlap(query: &str, captions: &[(Uuid, String)]) -> f32 {
 /// `「事業所等」という。` と定義された語が caption と同等の overlap 信号として
 /// 使える。caption と defined terms のいずれか強いほうを採用する。
 /// `MIN_CAPTION_OVERLAP` 未満は noise として無視する。
-pub fn caption_boost_in_place(query: &str, hits: &mut Vec<SearchHit>, alpha: f32) {
+pub fn caption_boost_in_place(query: &str, hits: &mut [SearchHit], alpha: f32) {
     if alpha <= 0.0 || hits.is_empty() {
         return;
     }
@@ -100,7 +100,7 @@ pub fn caption_boost_in_place(query: &str, hits: &mut Vec<SearchHit>, alpha: f32
 /// 各 hit の `heading_path` を caption と同じ要領で query と bigram 比較し、最大の一致率を
 /// `score` に `alpha` 倍で加える。caption が無い chunk (例: 改正注記から始まる条文) でも
 /// 章節タイトルが効くようになる。caption_boost と組み合わせて使う想定。
-pub fn heading_boost_in_place(query: &str, hits: &mut Vec<SearchHit>, alpha: f32) {
+pub fn heading_boost_in_place(query: &str, hits: &mut [SearchHit], alpha: f32) {
     if alpha <= 0.0 || hits.is_empty() {
         return;
     }
@@ -237,7 +237,7 @@ pub fn compute_caption_idf(captions: &[(Uuid, String)]) -> HashMap<String, f32> 
 /// 強いほうを採用する。defined term には IDF weight が無いので w=1.0 で計算。
 pub fn caption_boost_in_place_with_idf(
     query: &str,
-    hits: &mut Vec<SearchHit>,
+    hits: &mut [SearchHit],
     alpha: f32,
     idf: &HashMap<String, f32>,
 ) {

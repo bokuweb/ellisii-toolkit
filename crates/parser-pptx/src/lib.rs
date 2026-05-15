@@ -1,3 +1,8 @@
+// Restructuring the quick-xml event match arms changes the streaming
+// parser's state machine — keep the nested `if` checks readable and
+// suppress the style lint locally.
+#![allow(clippy::collapsible_match, clippy::collapsible_if)]
+
 use ellisii_core::{Error, Result};
 use ellisii_parsers_core::ParsedBlock;
 use std::io::Read;

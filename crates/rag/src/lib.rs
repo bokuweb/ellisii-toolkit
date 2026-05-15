@@ -411,7 +411,7 @@ impl<E: Embedder, S: VectorStore, L: LlmBackend> RagEngine<E, S, L> {
 
         for (i, q) in queries.iter().enumerate() {
             let q_weight = if i == 0 { 1.0 } else { opts.variant_weight };
-            let q_emb = self.embedder.embed(&[q.clone()]).await?;
+            let q_emb = self.embedder.embed(std::slice::from_ref(q)).await?;
             let vec_hits = self.store.search(scope, &q_emb[0], top_k * 5).await?;
             let kw_hits = self.store.keyword_search(scope, q, top_k * 5).await?;
             rankings.push((vec_hits, w_vec * q_weight));
