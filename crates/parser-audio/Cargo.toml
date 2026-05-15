@@ -1,0 +1,36 @@
+[package]
+name = "ellisii-parser-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Speech-to-text parser for Ellisii. Decodes wav/mp3/etc via a Transcriber trait (default stub; whisper.cpp behind feature gate)."
+
+[dependencies]
+ellisii-core.workspace = true
+ellisii-parsers-core.workspace = true
+async-trait.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+hound = "3.5"
+
+# whisper-rs (whisper.cpp binding) は feature gate にする。理由:
+#  - C/C++ ビルドが重い (1-2 分の cmake)
+#  - GGUF model がローカルに無いと無意味
+#  - CI で default 経路を高速に保つ
+# 利用者は `--features whispercpp` を付けるか、ellisii-sdk の feature 経由で
+# 有効化する。
+whisper-rs = { version = "0.13", optional = true, default-features = false }
+
+[features]
+default = []
+whispercpp = ["whisper-rs"]
+# Apple silicon で Metal 加速を使う場合は `--features whispercpp-metal`
+whispercpp-metal = ["whispercpp", "whisper-rs/metal"]
+# CUDA / coreml は将来必要なら追加 (今は明示的に依存しない)
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

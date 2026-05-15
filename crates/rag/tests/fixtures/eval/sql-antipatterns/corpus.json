@@ -1,0 +1,152 @@
+[
+  {
+    "doc_id": "ap-jaywalking",
+    "title": "Jaywalking (信号無視)",
+    "caption": "1 つのカラムに複数の値を CSV で詰め込むアンチパターン",
+    "text": "Jaywalking は、複数の値を持つ属性を 1 つのカラムにカンマ区切り (CSV) などで詰め込んで保存するアンチパターン。例: products テーブルの account_id カラムに '12,34,56' のように複数 ID を入れる。問題点は、SQL で値の集合を扱えず、結合や集計が困難になること、参照整合性 (foreign key) が効かないこと、リスト中の値の検索が LIKE %12% のように曖昧になること。解決策は、交差テーブル (中間テーブル) を作って多対多関係を正規化することである。"
+  },
+  {
+    "doc_id": "ap-naive-trees",
+    "title": "Naive Trees (素朴な木)",
+    "caption": "親 ID だけで階層構造を表現するアンチパターン (隣接リスト)",
+    "text": "Naive Trees (Adjacency List) は、各レコードに親ノードの ID (parent_id) のみを持たせて木構造を表現するアンチパターン。コメント階層やカテゴリ階層によく使われる。問題点は、特定ノードのすべての子孫を取得するのに再帰的なクエリが必要で SQL 標準では難しいこと、サブツリーの削除や移動も複雑になること。解決策は、経路列挙 (Path Enumeration)、入れ子集合 (Nested Set)、閉包テーブル (Closure Table) のいずれかで、ユースケースに応じて選ぶ。"
+  },
+  {
+    "doc_id": "ap-id-required",
+    "title": "ID Required (ナイーブな ID 主キー)",
+    "caption": "全テーブルに常に id カラムを置くアンチパターン",
+    "text": "ID Required は、すべてのテーブルに無条件で 'id' という名前の代理キー (surrogate key) を付けるアンチパターン。問題点は、自然キー (例: account_id, isbn) で十分一意な場合でも冗長な列を作ること、交差テーブルでも代理キーを使うと重複行を許してしまうこと、JOIN 時に同名の id 列が衝突しやすいこと。解決策は、テーブルごとに意味のある主キー名を付け (account_id 等)、自然キーが妥当な場合はそれを使い、複合キーが適切な場合は複合主キーを使う。"
+  },
+  {
+    "doc_id": "ap-keyless-entry",
+    "title": "Keyless Entry (外部キー嫌い)",
+    "caption": "外部キー制約を使わないアンチパターン",
+    "text": "Keyless Entry は、参照整合性のために外部キー制約を貼ることを避け、アプリケーション側でチェックしようとするアンチパターン。理由として「FK は遅い」「マイグレーションが面倒」などが挙げられるが、参照整合性が壊れたデータは検出も修復も難しい。子テーブルが親なし行を持つ、削除時に孤児レコードが残る等の問題が発生する。解決策は、外部キー制約 (FOREIGN KEY ... REFERENCES) と CASCADE / SET NULL などの参照オプションを積極的に使うことである。"
+  },
+  {
+    "doc_id": "ap-eav",
+    "title": "Entity-Attribute-Value (EAV)",
+    "caption": "属性をカラムでなく行で表現するアンチパターン",
+    "text": "Entity-Attribute-Value (EAV) は、可変属性を扱うために (entity_id, attr_name, attr_value) のような汎用テーブルを作るアンチパターン。例: products_attributes(product_id, key, value)。問題点は、必須属性の制約 (NOT NULL) を貼れない、データ型を強制できない、参照整合性が効かない、属性ごとに JOIN が必要で集計クエリが複雑化、レポートの作成が極めて困難になる。解決策は、共通属性は通常のカラムにし、サブタイプには Single Table Inheritance / Class Table Inheritance / Concrete Table Inheritance / シリアライズ LOB / Fifth Normal Form のいずれかを選ぶ。"
+  },
+  {
+    "doc_id": "ap-polymorphic-associations",
+    "title": "Polymorphic Associations (多態関連)",
+    "caption": "1 つの外部キーで複数テーブルを参照するアンチパターン",
+    "text": "Polymorphic Associations は、コメントなど多形的な関連を持つレコードを (parent_type, parent_id) のような 2 列で表現するアンチパターン。例: comments テーブルに issuable_type='Bug' と issuable_id を持たせる。問題点は、外部キー制約が貼れず参照整合性が壊れること、JOIN 時に種類ごとに分岐する必要があること、parent_type の値の正しさをアプリ側でしか保証できないこと。解決策は、共通テーブルを抽出する (Reverse Polymorphic Association / 共通スーパー型) か、関連先ごとに別の交差テーブルを作る。"
+  },
+  {
+    "doc_id": "ap-multicolumn-attributes",
+    "title": "Multicolumn Attributes (複数列属性)",
+    "caption": "同じ属性を複数のカラムに分けて保存するアンチパターン",
+    "text": "Multicolumn Attributes は、繰り返し属性を tag1, tag2, tag3 のように複数カラムに分けて保存するアンチパターン。問題点は、固定数しか入らない、検索が WHERE tag1='x' OR tag2='x' OR ... と冗長になる、新しい値の追加が ALTER TABLE になる、空き列を NULL で持つ無駄が出る。解決策は、繰り返し属性を別テーブルに正規化し (one-to-many)、必要なら検索パフォーマンスのために交差テーブル (many-to-many) を作る。"
+  },
+  {
+    "doc_id": "ap-metadata-tribbles",
+    "title": "Metadata Tribbles (増えすぎたテーブル)",
+    "caption": "値の数だけテーブルを増やすアンチパターン",
+    "text": "Metadata Tribbles は、年度や月など値ごとにテーブルを分割するアンチパターン。例: bugs_2008, bugs_2009, ... を作る。問題点は、新しい値ごとに DDL 実行が必要、横断クエリには UNION が必要、参照整合性が効かない、インデックスやスキーマの変更が全テーブルに必要。解決策は、1 つのテーブルにまとめて、年度などの値はカラムとして持ち、必要なら水平分割 (パーティショニング) で物理的に分ける。"
+  },
+  {
+    "doc_id": "ap-rounding-errors",
+    "title": "Rounding Errors (丸め誤差)",
+    "caption": "金額などに FLOAT を使うアンチパターン",
+    "text": "Rounding Errors は、通貨や金額など正確な数値が必要な場面で FLOAT (浮動小数点) や REAL を使うアンチパターン。問題点は、0.1 + 0.2 が 0.30000000000000004 になる、累積誤差が発生する、SUM の結果が桁ずれする、税計算など銭単位の精度が必要な場面で破綻する。解決策は、固定小数点数 NUMERIC / DECIMAL (桁数と小数点以下の桁数を指定) を使う。例: NUMERIC(9,2) で円単位を保証する。"
+  },
+  {
+    "doc_id": "ap-31-flavors",
+    "title": "31 Flavors (31 のフレーバー)",
+    "caption": "カラムに ENUM や CHECK で値を制限するアンチパターン",
+    "text": "31 Flavors は、status カラムに 'NEW','OPEN','RESOLVED' のような限定値しか入らないように ENUM 型や CHECK 制約 (IN ('NEW',...)) を使うアンチパターン。問題点は、新しい値の追加に ALTER TABLE が必要、値のメタデータ (表示名や順序など) を持てない、複数言語 / ローカライズに対応しづらい、過去に存在した値の履歴が消える。解決策は、参照テーブル (lookup table) を作り FK で参照する。値の追加・変更が DML 1 行で済む。"
+  },
+  {
+    "doc_id": "ap-phantom-files",
+    "title": "Phantom Files (幻のファイル)",
+    "caption": "画像などのバイナリをファイルパスで参照するアンチパターン",
+    "text": "Phantom Files は、画像 / 添付ファイルをファイルシステムに保存し、DB にはパス文字列だけを保存するアンチパターン。理由は「BLOB は重い」など。問題点は、レコード削除時にファイルが残る、トランザクションがファイルに及ばない、バックアップで DB と FS のスナップショットが取れない、スキーマ移行時に整合性が崩れる、レプリケーションが煩雑。解決策は、用途に応じて BLOB カラムに直接保存する (整合性優先) か、外部ストレージ (S3 等) を使うとしても DB と同期する仕組み (アウトボックス、トランザクションログ etc.) を組み込む。"
+  },
+  {
+    "doc_id": "ap-readable-passwords",
+    "title": "Readable Passwords (読み取れるパスワード)",
+    "caption": "パスワードを平文や可逆暗号で保存するアンチパターン",
+    "text": "Readable Passwords は、ユーザのパスワードを平文や、復号可能な暗号 (AES など) で保存するアンチパターン。問題点は、DB が漏洩した際に全ユーザのパスワードが失われる、管理者でもユーザのパスワードを見られてはならない原則に反する、パスワード再発行 UI が破綻する。解決策は、salt 付きの一方向ハッシュ関数 (bcrypt, scrypt, argon2 など、計算量を意図的に重くしたもの) を使う。MD5 / SHA1 単独は使わない。"
+  },
+  {
+    "doc_id": "ap-sql-injection",
+    "title": "SQL Injection (SQL インジェクション)",
+    "caption": "ユーザ入力を文字列連結でクエリに埋め込むアンチパターン",
+    "text": "SQL Injection は、ユーザ入力を文字列連結や sprintf で SQL クエリに直接埋め込むアンチパターン。例: \"SELECT * FROM users WHERE name='\" + input + \"'\"。問題点は、入力に '; DROP TABLE users;-- などを入れられると任意の SQL を実行されること、認証バイパスやデータ漏洩 / 破壊が可能。解決策は、必ずプリペアドステートメント (prepared statement) / パラメータ化クエリ ($1, ? などのプレースホルダ) を使うこと。エスケープを自前で書こうとしてはいけない。"
+  },
+  {
+    "doc_id": "ap-pseudokey-neat-freak",
+    "title": "Pseudokey Neat-Freak (擬似キーの欠番埋め)",
+    "caption": "AUTO_INCREMENT の欠番を埋めようとするアンチパターン",
+    "text": "Pseudokey Neat-Freak は、AUTO_INCREMENT / SERIAL 主キーの欠番 (削除した行の ID) を見つけて再利用しようとするアンチパターン。問題点は、再利用すると過去のレコードを参照する外部キーが意味的に壊れる (異なる行を指してしまう)、ID は単なる識別子であって連続性に意味は無い、再利用ロジックは race condition のリスクが高い。解決策は、欠番を気にしない。連続性が必要なら別途連番カラムを設ける (例: 注文番号は ROW_NUMBER OVER で生成)。"
+  },
+  {
+    "doc_id": "ap-see-no-evil",
+    "title": "See No Evil (見ざる聞かざる)",
+    "caption": "戻り値や例外を無視するアンチパターン",
+    "text": "See No Evil は、SQL 実行の戻り値 (影響行数、返却カラム数) や例外をアプリ側で無視するアンチパターン。例: UPDATE 文で 0 行更新でもエラーにしない、INSERT が失敗しても継続する、try { } catch (Exception ignored) { }。問題点は、データ不整合に気づけない、デバッグが困難、サイレント障害が発生する。解決策は、戻り値を必ずチェックする (例: rowCount() == 期待値)、例外をログ + 適切な再発行か rethrow する、N+1 問題のように実行 SQL のログをレビューする。"
+  },
+  {
+    "doc_id": "ap-diplomatic-immunity",
+    "title": "Diplomatic Immunity (外交特権)",
+    "caption": "DB だけ標準的なソフトウェア工学のプラクティスを免除するアンチパターン",
+    "text": "Diplomatic Immunity は、アプリ側ではバージョン管理 / テスト / レビューがあっても、DB スキーマや SQL だけはそれらを免除するアンチパターン。マイグレーションが管理されない、SQL レビューが無い、テストが手動だけ、DB 変更がドキュメント化されないなど。問題点は、本番との差分検出が困難、ロールバック不可、DBA だけが知っている暗黙知が増える、リファクタリングが怖くなる。解決策は、スキーマ変更を migration ファイルで管理 (Flyway / Liquibase / sqlx migrate 等)、DB の単体テスト・結合テスト、コードレビューに SQL を含める。"
+  },
+  {
+    "doc_id": "ap-magic-beans",
+    "title": "Magic Beans (魔法の豆)",
+    "caption": "Active Record でモデルが Row と Table を兼ねるアンチパターン",
+    "text": "Magic Beans は、Active Record パターンで「モデル = テーブル行」と「モデル = ビジネスロジック」を 1 クラスに混ぜるアンチパターン。コントローラから Model.find_by を呼び、保存・検証・関連取得 etc. すべて 1 クラスに集まる。問題点は、テストが DB に依存する、ビジネスロジックがフレームワーク (ORM) と密結合、再利用や別 DB への移植が困難。解決策は、Domain Model を分離する (DDD)、Repository パターンで永続化と論理を分離する、表データゲートウェイ (Table Data Gateway) と行データゲートウェイ (Row Data Gateway) を分けて使う。"
+  },
+  {
+    "doc_id": "ap-spaghetti-query",
+    "title": "Spaghetti Query (スパゲッティクエリ)",
+    "caption": "1 つの SQL で全部解決しようとするアンチパターン",
+    "text": "Spaghetti Query は、1 つの大きな SELECT 文で複数の異なる結果セットを取ろうとするアンチパターン。例: 1 クエリで合計と明細と平均を全部取る、巨大な JOIN と GROUP BY のネスト。問題点は、結果が直交していないため Cartesian 積が発生して行数が爆発、デバッグが極端に難しい、性能を計測してもどこがボトルネックか不明、ORM では再現困難。解決策は、1 タスク 1 クエリに分ける、UNION / WITH (CTE) / アプリ側で結合 / 一時テーブルなどで段階的に解く。"
+  },
+  {
+    "doc_id": "ap-implicit-columns",
+    "title": "Implicit Columns (暗黙の列)",
+    "caption": "SELECT * を多用するアンチパターン",
+    "text": "Implicit Columns は、本番コードで SELECT * を使い、結果を順序やインデックスでアクセスするアンチパターン。問題点は、後でカラムを追加すると順序が崩れて壊れる、不要な列まで送信されるためネットワーク帯域が無駄、ORM での部分的読み出しの最適化が効かない、PII 列が意図せず取得されるセキュリティリスク。解決策は、必要な列だけを明示的に SELECT col1, col2, ... と書く。テストやスキーマ確認の場面でだけ * を使う。"
+  },
+  {
+    "doc_id": "ap-ambiguous-groups",
+    "title": "Ambiguous Groups (あいまいなグループ化)",
+    "caption": "GROUP BY 句で集約されない列を SELECT するアンチパターン",
+    "text": "Ambiguous Groups は、GROUP BY 句で指定していない列を SELECT 句で参照するアンチパターン。例: SELECT product_id, MAX(date_reported), bug_id FROM bugs GROUP BY product_id。MySQL の古いモードなど一部 DB は許容するが、bug_id がどの行のものかは不定。問題点は、報告された値が実は MAX(date_reported) 行の値ではない可能性がある、移植性が無い、リファクタ時に気づかない。解決策は、ANY_VALUE() や FIRST_VALUE() を明示する、サブクエリで JOIN し直して該当行の他の列を取る、ウィンドウ関数 ROW_NUMBER OVER で関連行を選択する。"
+  },
+  {
+    "doc_id": "ap-random-selection",
+    "title": "Random Selection (ランダム選択)",
+    "caption": "ORDER BY RAND() で 1 件ランダム取得するアンチパターン",
+    "text": "Random Selection は、ランダムに 1 行取得するために ORDER BY RAND() / RANDOM() LIMIT 1 を使うアンチパターン。問題点は、全行に乱数を割り当ててソートするので O(n log n) で O(行数) 規模に遅くなる、インデックスが効かない、行数が多いと致命的。解決策は、ID の最大値と最小値を取って範囲内の乱数で 1 行取得する (連続 ID を仮定)、OFFSET と COUNT を組み合わせる、別途 random_key 列を持っておく等、複数の代替案がある。"
+  },
+  {
+    "doc_id": "ap-poor-mans-search-engine",
+    "title": "Poor Man's Search Engine (貧乏人の検索エンジン)",
+    "caption": "LIKE %word% で全文検索を実装するアンチパターン",
+    "text": "Poor Man's Search Engine は、全文検索を SQL の LIKE '%word%' や正規表現で代替するアンチパターン。問題点は、フルスキャンで遅い、インデックスが効かない (前方一致なら一部効くが %word% は不可)、ステミングや同義語に対応できない、関連度スコアが計算できない、複合語の解釈が雑。解決策は、DB 内蔵の全文検索インデックス (PostgreSQL tsvector, MySQL FULLTEXT, SQLite FTS5) を使うか、Elasticsearch / OpenSearch / Meilisearch などの専用検索エンジンを併用する。"
+  },
+  {
+    "doc_id": "ap-index-shotgun",
+    "title": "Index Shotgun (インデックスショットガン)",
+    "caption": "とりあえず全列にインデックスを貼るアンチパターン",
+    "text": "Index Shotgun は、性能チューニングのために全カラムや多くのカラムにインデックスを貼るアンチパターン。問題点は、書き込み (INSERT / UPDATE / DELETE) のたびにインデックス更新が必要なので書き込みが遅くなる、ストレージを浪費する、オプティマイザが選択を誤りやすい、重複・冗長なインデックスが残る。解決策は、MENTOR (Measure / Explain / Nominate / Test / Optimize / Rebuild) のような体系で計測してから index を選ぶ、複合インデックスは順序が重要、不要 index を定期的に削除する。"
+  },
+  {
+    "doc_id": "ap-fear-of-the-unknown",
+    "title": "Fear of the Unknown (恐怖の NULL)",
+    "caption": "NULL を回避しようとして空文字や 0 を代入するアンチパターン",
+    "text": "Fear of the Unknown は、NULL の扱いの難しさを避けるために、欠損値を空文字 ''、0、'N/A' などのセンチネル値で代用するアンチパターン。問題点は、NULL とデータ値が混在して集計が誤る (AVG が 0 を含めて計算されるなど)、IS NULL で簡潔に検索できない、本当に値 '0' の行と区別できない、3 値論理 (TRUE / FALSE / UNKNOWN) を理解できないままさらに混乱する。解決策は、NULL を欠損値として正しく使い、IS NULL / IS NOT NULL / COALESCE でハンドリングする。「未知」を表現するための SQL の道具を使う。"
+  },
+  {
+    "doc_id": "ap-reduce-reduce-conflict",
+    "title": "Reduce-Reduce Conflict / Database Anti-rollback",
+    "caption": "DB での競合解決を避けるためロックや単一マスターに依存するアンチパターン",
+    "text": "Reduce-Reduce Conflict は、複数プロセス / 複数ノードからの競合する更新に対し、明示的な競合解決ロジックを実装する代わりに、テーブル全体のロックや単一マスターサーバへの一極集中、または再試行で何とかしようとするアンチパターン。問題点は、書き込みスケールしない、デッドロック頻発、楽観的並行制御が使えない、レプリケーション遅延で読み取り側が不整合。解決策は、楽観的ロック (version 列、CAS)、悲観的ロック (FOR UPDATE)、CRDT / イベントソーシング / アプリ側のマージロジックなど、競合の性質に応じた手法を選ぶ。"
+  }
+]

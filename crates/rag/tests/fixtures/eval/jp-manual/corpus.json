@@ -1,0 +1,212 @@
+[
+ {
+  "doc_id": "network-overview",
+  "parent_id": "manual-network",
+  "title": "1.0 ネットワーク概要",
+  "caption": "（ネットワーク基礎）",
+  "text": "（ネットワーク基礎） 本マニュアルのネットワーク章は、社内システムを構成するネットワーク層について基本概念から運用設定までを扱う。OSI参照モデルのうち主にL3/L4を対象とし、IPアドレス設計、サブネット分割、ルーティング、ファイアウォール、ロードバランサ、TLS終端の各トピックを順に説明する。"
+ },
+ {
+  "doc_id": "network-tcp",
+  "parent_id": "manual-network",
+  "title": "1.1 TCP接続管理",
+  "caption": "（TCP接続とファイアウォール設定）",
+  "text": "（TCP接続とファイアウォール設定） TCPは3-way handshake によりコネクションを確立し、信頼性のあるバイトストリームを提供する。本番環境では SYN flood 対策として SYN cookie を有効化する。ファイアウォール側では、許可ポート(80/443)以外への新規TCPコネクションは drop ルールでブロックし、ステートフル接続追跡 (conntrack) で確立済みフローのみ通過させる。"
+ },
+ {
+  "doc_id": "network-udp",
+  "parent_id": "manual-network",
+  "title": "1.2 UDPと低レイテンシ通信",
+  "caption": "（UDPの利用ケース）",
+  "text": "（UDPの利用ケース） UDPはコネクションレスの軽量プロトコルで、DNS / NTP / QUIC / リアルタイムメディアなど低レイテンシ・小ペイロードのユースケースに用いる。順序保証や再送が必要な場合はアプリケーション層で補う設計とする。"
+ },
+ {
+  "doc_id": "network-dns",
+  "parent_id": "manual-network",
+  "title": "1.3 DNS設計",
+  "caption": "（社内DNSの構成）",
+  "text": "（社内DNSの構成） 内部権威DNS は Unbound + NSD の組み合わせで運用し、外部公開ゾーンは AWS Route 53 で管理する。レコードのTTLは平常時300秒、災害切替時は60秒へ短縮する。DNSSECは外部公開ゾーンのみで有効化する。"
+ },
+ {
+  "doc_id": "network-loadbalancer",
+  "parent_id": "manual-network",
+  "title": "1.4 ロードバランサ",
+  "caption": "（ロードバランサ構成）",
+  "text": "（ロードバランサ構成） フロントエンドは ALB、内部サービス間は NLB を使い分ける。ヘルスチェック失敗時の切り離しは即時、復帰は2回連続成功後とする。ファイアウォール側ではロードバランサからのトラフィックのみを許可し、TCP接続のステートを conntrack で追跡する。"
+ },
+ {
+  "doc_id": "network-tls",
+  "parent_id": "manual-network",
+  "title": "1.5 TLS終端",
+  "caption": "（TLS終端とサーバ証明書）",
+  "text": "（TLS終端とサーバ証明書） TLS 終端はロードバランサ層で行い、内部通信路でも TLS 1.3 を再暗号化する。サーバ証明書は社内 PKI から発行し、有効期限90日で自動更新する。プロトコルは TLS 1.3 を必須としそれ以下は無効化する。"
+ },
+ {
+  "doc_id": "db-overview",
+  "parent_id": "manual-database",
+  "title": "2.0 データベース概要",
+  "caption": "（データベース基礎）",
+  "text": "（データベース基礎） 本マニュアルのデータベース章では、社内で利用する RDBMS と KVS の選択基準、運用設定、レプリケーションとバックアップ、認証情報の取扱いを記述する。トランザクション要件のあるシステムは MySQL または PostgreSQL を利用し、セッション/キャッシュ用途は Redis を採用する。"
+ },
+ {
+  "doc_id": "db-mysql",
+  "parent_id": "manual-database",
+  "title": "2.1 MySQLレプリケーション",
+  "caption": "（MySQL運用とレプリケーション）",
+  "text": "（MySQL運用とレプリケーション） MySQL は GTID ベースの非同期レプリケーションを基本構成とし、本番では1次:2次(同一AZ)+ 2次(別AZ) の3ノード構成で運用する。レプリケーション接続時のレプリカユーザ認証情報は平文ではなく caching_sha2_password で暗号化通信を必須とし、SSLクライアント証明書も併用する。"
+ },
+ {
+  "doc_id": "db-postgres",
+  "parent_id": "manual-database",
+  "title": "2.2 PostgreSQL運用",
+  "caption": "（PostgreSQL運用）",
+  "text": "（PostgreSQL運用） PostgreSQL は streaming replication と logical replication を併用する。VACUUM は autovacuum を基本としつつ、長時間トランザクションを伴うジョブの実行前後に手動 VACUUM ANALYZE を挟む。pg_hba.conf では本番セグメントへの接続を scram-sha-256 のみに限定する。"
+ },
+ {
+  "doc_id": "db-redis",
+  "parent_id": "manual-database",
+  "title": "2.3 Redis運用",
+  "caption": "（Redisキャッシュ）",
+  "text": "（Redisキャッシュ） Redis はセッションストアおよびキャッシュ層として利用する。永続化は AOF を everysec、RDB は1時間毎のスナップショットで併用する。本番では Redis Cluster 6ノード構成で運用し、外部公開せず VPC 内部からのみアクセスする。"
+ },
+ {
+  "doc_id": "db-backup",
+  "parent_id": "manual-database",
+  "title": "2.4 バックアップとリストア",
+  "caption": "（DBバックアップポリシー）",
+  "text": "（DBバックアップポリシー） MySQL/PostgreSQL は physical (snapshot) と logical (mysqldump/pg_dump) を併用し、毎日 03:00 にスナップショットを取得する。バックアップ保管は別リージョンに 30 日間、暗号化保管は KMS で実施する。月1回リストア演習を必須化する。"
+ },
+ {
+  "doc_id": "db-ddl",
+  "parent_id": "manual-database",
+  "title": "2.5 DDLとマイグレーション",
+  "caption": "（DDLの本番適用）",
+  "text": "（DDLの本番適用） 本番 DB への DDL は無停止運用のため pt-online-schema-change (MySQL) または pg_repack (PostgreSQL) を必須とする。実行前後にレプリケーション遅延を監視し、DDL 実行ログは監査ログとして集中ログ基盤へ転送する。"
+ },
+ {
+  "doc_id": "sec-overview",
+  "parent_id": "manual-security",
+  "title": "3.0 セキュリティ概要",
+  "caption": "（セキュリティ基礎）",
+  "text": "（セキュリティ基礎） 本マニュアルのセキュリティ章では、認証、認可、通信路の暗号化、機密データの保管、監査ログ、インシデント対応を記述する。全てのシステム間通信は TLS 1.3 以上を必須とし、サーバ証明書は内部 PKI から発行する。"
+ },
+ {
+  "doc_id": "sec-auth",
+  "parent_id": "manual-security",
+  "title": "3.1 認証",
+  "caption": "（多要素認証と認証情報管理）",
+  "text": "（多要素認証と認証情報管理） 全ての社員アカウントは OIDC ベースのSSO に統合され、管理者ロールには TOTP もしくはハードウェアトークンによる多要素認証を必須とする。サービス間アカウントの認証情報は HashiCorp Vault に格納し、平文での設定ファイル直書きを禁止する。"
+ },
+ {
+  "doc_id": "sec-encrypt",
+  "parent_id": "manual-security",
+  "title": "3.2 暗号化",
+  "caption": "（保管時/転送時暗号化）",
+  "text": "（保管時/転送時暗号化） 保管時暗号化はディスクレベルで AES-256-GCM を、転送時は TLS 1.3 を必須とする。データベース接続およびレプリケーション通信路も暗号化対象で、平文での接続を禁止する。鍵管理は KMS で行い、年1回の自動ローテーションを設定する。"
+ },
+ {
+  "doc_id": "sec-audit",
+  "parent_id": "manual-security",
+  "title": "3.3 監査ログ",
+  "caption": "（監査ログと改ざん防止）",
+  "text": "（監査ログと改ざん防止） 全ての管理操作 (sudo, kubectl, データベースの DDL/DML, 認証情報アクセス) は監査ログとして集中ログ基盤に転送し、改ざん防止のため WORM ストレージに最低1年間保管する。"
+ },
+ {
+  "doc_id": "sec-vault",
+  "parent_id": "manual-security",
+  "title": "3.4 シークレット管理",
+  "caption": "（Vaultによる認証情報管理）",
+  "text": "（Vaultによる認証情報管理） サービス間アカウントの認証情報、APIキー、暗号鍵は HashiCorp Vault に格納し、有効期限つき動的シークレットの発行を基本とする。データベース接続用認証情報も Vault が直接発行し、平文設定ファイル直書きを禁止する。"
+ },
+ {
+  "doc_id": "sec-incident",
+  "parent_id": "manual-security",
+  "title": "3.5 インシデント対応",
+  "caption": "（インシデント対応手順）",
+  "text": "（インシデント対応手順） セキュリティインシデント検知時は監査ログを保全し、対象アカウントの認証情報を即時失効する。被害範囲調査では集中ログ基盤の検索インデックスを利用する。事後に再発防止策をレビューする。"
+ },
+ {
+  "doc_id": "deploy-overview",
+  "parent_id": "manual-deploy",
+  "title": "4.0 デプロイ概要",
+  "caption": "（デプロイ基礎）",
+  "text": "（デプロイ基礎） 本マニュアルのデプロイ章では、コンテナ化、オーケストレーション、CI/CD パイプライン、ブルーグリーンデプロイ、ロールバック手順を記述する。全サービスは Docker イメージとしてビルドし、Kubernetes 上で運用する。"
+ },
+ {
+  "doc_id": "deploy-docker",
+  "parent_id": "manual-deploy",
+  "title": "4.1 Dockerイメージ",
+  "caption": "（Dockerイメージビルド規約）",
+  "text": "（Dockerイメージビルド規約） Docker イメージは distroless または Alpine ベースで最小構成にし、root ユーザでの実行を禁止する。マルチステージビルドでビルド成果物のみを最終イメージへコピーする。キャッシュ層を効果的に使うため、依存関係のインストールを前段、アプリケーションコードのコピーを後段に置く。"
+ },
+ {
+  "doc_id": "deploy-k8s",
+  "parent_id": "manual-deploy",
+  "title": "4.2 Kubernetes運用",
+  "caption": "（Kubernetes pod 設定）",
+  "text": "（Kubernetes pod 設定） 全 pod に readinessProbe / livenessProbe を必ず設定し、リソース requests/limits を明示する。NetworkPolicy で pod 間通信を最小権限化し、Namespace 間の到達性は明示的に許可する。"
+ },
+ {
+  "doc_id": "deploy-ci",
+  "parent_id": "manual-deploy",
+  "title": "4.3 CI/CDパイプライン",
+  "caption": "（CI/CDとDBマイグレーション）",
+  "text": "（CI/CDとDBマイグレーション） CI ではユニットテスト・統合テスト・脆弱性スキャンを必須とする。DB スキーマ変更は forward-compatible なステップ (列追加 → アプリ更新 → 旧列削除) に分解し、本番アプリへの新コードデプロイの直後に旧データ削除のマイグレーションを行わない (ロールバック安全性のため)。"
+ },
+ {
+  "doc_id": "deploy-bluegreen",
+  "parent_id": "manual-deploy",
+  "title": "4.4 ブルーグリーンデプロイ",
+  "caption": "（ブルーグリーンとロールバック）",
+  "text": "（ブルーグリーンとロールバック） 本番デプロイはブルーグリーン方式で行い、新バージョンへのトラフィック切替はロードバランサ層で実施する。問題発生時は旧バージョン側へ即時ロールバック可能とする。DB スキーマ変更がある場合は forward-compatible 設計が前提。"
+ },
+ {
+  "doc_id": "deploy-helm",
+  "parent_id": "manual-deploy",
+  "title": "4.5 Helmチャート",
+  "caption": "（Helmによる構成管理）",
+  "text": "（Helmによる構成管理） Kubernetes マニフェストは Helm チャートで管理し、values.yaml で環境差分を表現する。リソース requests/limits、readinessProbe/livenessProbe を必ず values でテンプレ化する。本番リリースは GitOps (ArgoCD) 経由とする。"
+ },
+ {
+  "doc_id": "perf-overview",
+  "parent_id": "manual-perf",
+  "title": "5.0 パフォーマンス概要",
+  "caption": "（パフォーマンス基礎）",
+  "text": "（パフォーマンス基礎） 本マニュアルのパフォーマンス章では、キャッシュ設計、CDN活用、監視・観測性、容量計画を記述する。性能目標は SLO として明文化し、P95 レイテンシと可用性で SLI を定義する。"
+ },
+ {
+  "doc_id": "perf-cache",
+  "parent_id": "manual-perf",
+  "title": "5.1 キャッシュ層",
+  "caption": "（多層キャッシュ）",
+  "text": "（多層キャッシュ） キャッシュは アプリケーションプロセス内(in-memory) → Redis (共有) → CDN の3層で構成する。キャッシュキー設計は、認証ユーザを巻き込むエンドポイントでは必ずユーザ識別子を含める。コンテナ単位のキャッシュ層を追加する場合はサイドカー pod として配置する。"
+ },
+ {
+  "doc_id": "perf-cdn",
+  "parent_id": "manual-perf",
+  "title": "5.2 CDN",
+  "caption": "（CDNとエッジ配信）",
+  "text": "（CDNとエッジ配信） 静的アセットおよびAPIレスポンスのキャッシュ可能な部分は CloudFront 経由で配信する。キャッシュキーには Vary ヘッダで言語・端末種別を含める。秘匿情報を含むレスポンスは必ず Cache-Control: private を返す。"
+ },
+ {
+  "doc_id": "perf-monitor",
+  "parent_id": "manual-perf",
+  "title": "5.3 監視と観測性",
+  "caption": "（メトリクス/ログ/トレース）",
+  "text": "（メトリクス/ログ/トレース） メトリクスは Prometheus、ログは Loki、分散トレースは OpenTelemetry + Tempo で収集する。pod のネットワーク到達性は kube-state-metrics と blackbox_exporter で監視し、不到達がしきい値を超えたら PagerDuty へ通知する。"
+ },
+ {
+  "doc_id": "perf-slo",
+  "parent_id": "manual-perf",
+  "title": "5.4 SLOとアラート",
+  "caption": "（SLO設計とアラート閾値）",
+  "text": "（SLO設計とアラート閾値） サービスごとに SLO を P95 レイテンシと可用性で定義する。エラーバジェットを月次で計上し、消費率がしきい値を超えるとアラートを発火し PagerDuty へ通知する。SLO 達成状況は Prometheus と Grafana で可視化する。"
+ },
+ {
+  "doc_id": "perf-capacity",
+  "parent_id": "manual-perf",
+  "title": "5.5 容量計画",
+  "caption": "（容量計画とスケーリング）",
+  "text": "（容量計画とスケーリング） 各サービスは HPA で CPU 使用率を基準に水平スケールする。データベース層は読み取りレプリカ追加で対応し、Redis Cluster は shard 追加で水平スケールする。月次で容量計画を見直し、Prometheus の推移から先読みする。"
+ }
+]

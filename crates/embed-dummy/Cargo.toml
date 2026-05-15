@@ -1,0 +1,13 @@
+[package]
+name = "ellisii-embed-dummy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ellisii-core.workspace = true
+ellisii-embed-core.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }

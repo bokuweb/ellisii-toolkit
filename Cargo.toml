@@ -1,0 +1,103 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/parsers-core",
+    "crates/parsers",
+    "crates/parser-text",
+    "crates/parser-markdown",
+    "crates/parser-pdf",
+    "crates/parser-docx",
+    "crates/parser-xlsx",
+    "crates/parser-pptx",
+    "crates/parser-audio",
+    "crates/ocr",
+    "crates/chunker",
+    "crates/embed-core",
+    "crates/embed-dummy",
+    "crates/embed-static-jp",
+    "crates/store-core",
+    "crates/store-memory",
+    "crates/store-sqlite",
+    "crates/llm-core",
+    "crates/llm-stub",
+    "crates/llm-prompt",
+    "crates/llm-llamacpp",
+    "crates/rag",
+    "crates/rag-answer-eval",
+    "crates/rag-eval-cli",
+    "crates/jp-tokenizer-core",
+    "crates/jp-tokenizer-bigram",
+    "crates/jp-tokenizer-vaporetto",
+    "crates/provence-core",
+    "crates/provence-passthrough",
+    "crates/provence-onnx",
+    "crates/query-rewriter-core",
+    "crates/query-rewriter-passthrough",
+    "crates/query-rewriter-llm",
+    "crates/ingest",
+    "crates/sdk",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+authors = ["bokuweb"]
+repository = "https://github.com/bokuweb/ellisii-toolkit"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+uuid = { version = "1", features = ["v4", "serde"] }
+encoding_rs = "0.8"
+quick-xml = "0.39"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+ellisii-core = { path = "crates/core" }
+ellisii-parsers-core = { path = "crates/parsers-core" }
+ellisii-parsers = { path = "crates/parsers" }
+ellisii-parser-text = { path = "crates/parser-text" }
+ellisii-parser-markdown = { path = "crates/parser-markdown" }
+ellisii-parser-pdf = { path = "crates/parser-pdf" }
+ellisii-parser-docx = { path = "crates/parser-docx" }
+ellisii-parser-xlsx = { path = "crates/parser-xlsx" }
+ellisii-parser-pptx = { path = "crates/parser-pptx" }
+ellisii-parser-audio = { path = "crates/parser-audio" }
+ellisii-ocr = { path = "crates/ocr" }
+ellisii-chunker = { path = "crates/chunker" }
+ellisii-embed-core = { path = "crates/embed-core" }
+ellisii-embed-dummy = { path = "crates/embed-dummy" }
+ellisii-embed-static-jp = { path = "crates/embed-static-jp" }
+ellisii-store-core = { path = "crates/store-core" }
+ellisii-store-memory = { path = "crates/store-memory" }
+ellisii-store-sqlite = { path = "crates/store-sqlite" }
+ellisii-llm-core = { path = "crates/llm-core" }
+ellisii-llm-stub = { path = "crates/llm-stub" }
+ellisii-llm-prompt = { path = "crates/llm-prompt" }
+ellisii-llm-llamacpp = { path = "crates/llm-llamacpp" }
+ellisii-rag = { path = "crates/rag" }
+ellisii-rag-answer-eval = { path = "crates/rag-answer-eval" }
+ellisii-jp-tokenizer-core = { path = "crates/jp-tokenizer-core" }
+ellisii-jp-tokenizer-bigram = { path = "crates/jp-tokenizer-bigram" }
+ellisii-jp-tokenizer-vaporetto = { path = "crates/jp-tokenizer-vaporetto" }
+ellisii-provence-core = { path = "crates/provence-core" }
+ellisii-provence-passthrough = { path = "crates/provence-passthrough" }
+ellisii-provence-onnx = { path = "crates/provence-onnx" }
+ellisii-query-rewriter-core = { path = "crates/query-rewriter-core" }
+ellisii-query-rewriter-passthrough = { path = "crates/query-rewriter-passthrough" }
+ellisii-query-rewriter-llm = { path = "crates/query-rewriter-llm" }
+ellisii-ingest = { path = "crates/ingest" }
+ellisii-sdk = { path = "crates/sdk" }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

@@ -1,0 +1,13 @@
+[package]
+name = "ellisii-parser-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-core.workspace = true
+ellisii-parsers-core.workspace = true
+encoding_rs.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

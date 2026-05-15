@@ -1,0 +1,27 @@
+[package]
+name = "ellisii-parser-pdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-core.workspace = true
+ellisii-parsers-core.workspace = true
+ellisii-ocr.workspace = true
+async-trait.workspace = true
+tokio = { workspace = true }
+tracing.workspace = true
+tempfile = "3"
+# 一次パーサ: pdfium (Google PDF 実装)。日本語の Adobe 既定 CMap を含む幅広い PDF に対応。
+# pdfium バイナリは初回 parse 時に自動ダウンロード (~10MB)。
+# `image_latest` を有効にすると `PdfBitmap::as_image()` が使えるようになり、
+# スキャン PDF を OCR にかけるためのページ画像書き出しに使う。
+pdfium-render = { version = "0.8", default-features = false, features = ["thread_safe", "bindings", "pdfium_latest", "image_latest"] }
+pdfium-auto = "0.3"
+# フォールバック: pdfium が利用不可のとき (ネット不通・ダウンロード失敗) は pdf-extract に落ちる
+pdf-extract = "0.9"
+# `image::ImageBuffer::save(*.png)` のために PNG エンコーダを明示的に有効化
+# しておく。pdfium-render が pull する image は default features 無しなので、
+# このディレクトリだけで PNG を書き出すパス (ingest 本流 + bench example) で
+# `ImageFormat::Png is not supported` エラーになる。
+image = { version = "0.25", default-features = false, features = ["png"] }

@@ -1,0 +1,33 @@
+[package]
+name = "ellisii-llm-llamacpp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+tracing.workspace = true
+ellisii-core.workspace = true
+ellisii-llm-core.workspace = true
+ellisii-llm-prompt.workspace = true
+tokio = { workspace = true }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+
+# llama.cpp バインディング — `gguf` feature 有効時のみリンクする (重い依存)
+llama-cpp-2 = { version = "0.1", optional = true }
+# llama-cpp-2 が再エクスポートしてくれない FLASH_ATTN enum の定数値だけを
+# 参照するために、同 version の sys クレートを直接使う。
+llama-cpp-sys-2 = { version = "=0.1.145", optional = true }
+
+[features]
+default = []
+gguf = ["dep:llama-cpp-2", "dep:llama-cpp-sys-2"]
+
+# Intel ハイブリッドコア (P+E) の P-core 数検出に
+# GetLogicalProcessorInformationEx を呼ぶため Windows のみ追加。
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_SystemInformation", "Win32_Foundation"] }
+
+[dev-dependencies]
+tokio = { workspace = true }

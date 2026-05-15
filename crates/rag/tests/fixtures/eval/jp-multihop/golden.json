@@ -1,0 +1,26 @@
+{
+  "name": "jp-multihop-v2",
+  "items": [
+    { "query": "新卒社員が出張するときの宿泊費の上限はいくらか", "relevant": ["policy-employee-types", "policy-business-travel"], "tags": ["multi-hop", "definition+rule"] },
+    { "query": "在宅勤務中に副業を始めたい場合に必要な承認の手続き", "relevant": ["policy-remote-work", "policy-side-job"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "管理職が育児休業を取った場合、その期間は人事評価でどう扱われるか", "relevant": ["policy-childcare-leave", "policy-evaluation"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "業務委託契約の人が会社で知った情報を個人SNSに投稿してよいか", "relevant": ["policy-employee-types", "policy-sns"], "tags": ["multi-hop", "definition+rule"] },
+    { "query": "試用期間中の社員が立て替えた経費を精算するときの上限はいくらか", "relevant": ["policy-probation", "policy-expense-reimburse"], "tags": ["multi-hop", "definition+rule"] },
+    { "query": "退職を申し出てから残りの有給休暇を消化するための手続き", "relevant": ["policy-retirement", "policy-paid-leave"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "BYOD端末から業務メールを送るときに必要な暗号化の要件", "relevant": ["policy-byod", "policy-email-encryption"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "契約社員がハラスメント被害を通報する場合に利用できる窓口", "relevant": ["policy-harassment", "policy-whistleblowing"], "tags": ["multi-hop", "scope+venue"] },
+    { "query": "新卒社員が試用期間中に有給休暇を取得できるか", "relevant": ["policy-probation", "policy-paid-leave"], "tags": ["multi-hop", "definition+rule"] },
+    { "query": "海外出張で機密情報を持ち出すための承認手続き", "relevant": ["policy-business-travel", "policy-overseas-travel", "policy-confidential"], "tags": ["multi-hop", "3-doc"] },
+    { "query": "管理職に昇格するために必要な兼務またはプロジェクト経験の要件", "relevant": ["policy-evaluation", "policy-dual-roles"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "育児休業中の社員の社内システムへのアクセス権限はどうなるか", "relevant": ["policy-childcare-leave", "policy-access-control"], "tags": ["multi-hop", "cross-ref"] },
+    { "query": "退職金は試用期間中の社員にも支払われるか", "relevant": ["policy-probation", "policy-severance"], "tags": ["multi-hop", "definition+rule"] },
+    { "query": "退職した後でも内部通報窓口を利用できるか", "relevant": ["policy-whistleblowing"], "tags": ["single-hop", "scope"] },
+    { "query": "業務委託は在宅勤務の対象になるか", "relevant": ["policy-employee-types", "policy-remote-work"], "tags": ["multi-hop", "scope"] },
+    { "query": "入社して2年目の社員が地方拠点を訪問する際、1泊あたり会社が認める宿泊費", "relevant": ["policy-employee-types", "policy-business-travel"], "tags": ["multi-hop", "hard", "paraphrase"] },
+    { "query": "雇用契約ではなく案件単位で働いている人が、社外の自宅で業務に従事してよいか", "relevant": ["policy-employee-types", "policy-remote-work"], "tags": ["multi-hop", "hard", "paraphrase"] },
+    { "query": "課長相当の役職にある者が自分のスマートフォンから取引先へ秘密情報を送るとき守るべきルール", "relevant": ["policy-employee-types", "policy-byod", "policy-email-encryption"], "tags": ["multi-hop", "hard", "3-doc", "paraphrase"] },
+    { "query": "入社直後の研修期間にある社員が立替えた業務上の支出を会社に請求できる上限", "relevant": ["policy-probation", "policy-expense-reimburse"], "tags": ["multi-hop", "hard", "paraphrase"] },
+    { "query": "1歳未満の子を育てるために休んでいた社員が職場に戻ったとき、停止されていた社内システムの利用権はどうなるか", "relevant": ["policy-childcare-leave", "policy-access-control"], "tags": ["multi-hop", "hard", "paraphrase"] },
+    { "query": "辞めた後しばらく経った人でもハラスメントの相談窓口を利用する余地はあるか", "relevant": ["policy-harassment", "policy-whistleblowing"], "tags": ["multi-hop", "hard", "paraphrase"] }
+  ]
+}

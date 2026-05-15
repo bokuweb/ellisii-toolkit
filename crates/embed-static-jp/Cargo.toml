@@ -1,0 +1,20 @@
+[package]
+name = "ellisii-embed-static-jp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+ellisii-core.workspace = true
+ellisii-embed-core.workspace = true
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+safetensors = "0.4"
+memmap2 = "0.9"
+parking_lot = "0.12"
+ahash = "0.8"
+
+[dev-dependencies]
+tokio = { workspace = true }
+tempfile = "3"

@@ -1,0 +1,30 @@
+{
+  "name": "sql-antipatterns-v1-hard",
+  "items": [
+    { "query": "メンバーシップを users.team_ids = '1,5,7' のように 1 列に詰めて保存している", "relevant": ["ap-jaywalking"], "tags": ["scenario", "data-modeling"] },
+    { "query": "ある投稿スレッドのすべての孫レスを 1 クエリで取得したい", "relevant": ["ap-naive-trees"], "tags": ["scenario", "tree"] },
+    { "query": "products テーブルにすでに ISBN がユニークなのに代理キーを別途付けるのは無駄では", "relevant": ["ap-id-required"], "tags": ["scenario", "primary-key"] },
+    { "query": "孤児レコードが本番でちらほら残っているのを定期バッチで掃除している", "relevant": ["ap-keyless-entry"], "tags": ["scenario", "constraints"] },
+    { "query": "商品ごとに必要な属性が違うので汎用の (key, value) テーブルを作って融通を効かせたい", "relevant": ["ap-eav"], "tags": ["scenario", "data-modeling"] },
+    { "query": "Issue にも MergeRequest にも紐づくコメントを noteable_type と noteable_id で表現する設計", "relevant": ["ap-polymorphic-associations"], "tags": ["scenario", "data-modeling"] },
+    { "query": "スキルを skill_1, skill_2, skill_3 と 3 列に分けたが 4 つ目が必要になった", "relevant": ["ap-multicolumn-attributes"], "tags": ["scenario", "normalization"] },
+    { "query": "売上を年度ごとに sales_2022 / sales_2023 と分けて作ったら複数年集計が UNION だらけ", "relevant": ["ap-metadata-tribbles"], "tags": ["scenario", "schema"] },
+    { "query": "DOUBLE 型で集計したら 10 万行の合計が 0.01 ずれた", "relevant": ["ap-rounding-errors"], "tags": ["scenario", "data-type"] },
+    { "query": "ステータス値を追加するたびに ALTER TABLE が必要で運用が辛い", "relevant": ["ap-31-flavors"], "tags": ["scenario", "data-type"] },
+    { "query": "プロフィール画像をユーザが削除したのに、サーバ上にファイルだけ残ってしまった", "relevant": ["ap-phantom-files"], "tags": ["scenario", "blob"] },
+    { "query": "DB が漏洩した事件で全ユーザのログインパスワードが復号されてしまった", "relevant": ["ap-readable-passwords"], "tags": ["scenario", "security"] },
+    { "query": "検索フォームに `' OR '1'='1` と入れたら他人のデータが全部表示された", "relevant": ["ap-sql-injection"], "tags": ["scenario", "security"] },
+    { "query": "削除済みの注文 ID を新しい注文に振り直したらレポートで参照が壊れた", "relevant": ["ap-pseudokey-neat-freak"], "tags": ["scenario", "primary-key"] },
+    { "query": "try { ... } catch (Exception ignored) で SQL の失敗を握りつぶしていてデータ不整合に気づかなかった", "relevant": ["ap-see-no-evil"], "tags": ["scenario", "error-handling"] },
+    { "query": "DB スキーマの変更履歴がチケットのメモにしか残っておらず、本番との差分が分からない", "relevant": ["ap-diplomatic-immunity"], "tags": ["scenario", "process"] },
+    { "query": "User クラスにビジネスロジックを 2000 行書いたら単体テストが DB 起動を要求するようになった", "relevant": ["ap-magic-beans"], "tags": ["scenario", "architecture"] },
+    { "query": "1 つの SELECT で売上合計と顧客明細を JOIN したら結果が 100 倍に膨れ上がった", "relevant": ["ap-spaghetti-query"], "tags": ["scenario", "query-design"] },
+    { "query": "テーブルにカラムを追加したら、列順序を前提にしていた既存コードが壊れた", "relevant": ["ap-implicit-columns"], "tags": ["scenario", "query-design"] },
+    { "query": "GROUP BY product_id で MAX(date) を取った行の他のカラムを参照したら別の行の値が混ざった", "relevant": ["ap-ambiguous-groups"], "tags": ["scenario", "aggregation"] },
+    { "query": "おすすめ商品をランダムに 1 件出すために ORDER BY RAND() を使ったら 100ms かかる", "relevant": ["ap-random-selection"], "tags": ["scenario", "performance"] },
+    { "query": "本文に LIKE '%キーワード%' でブログ検索したら全件スキャンで遅い", "relevant": ["ap-poor-mans-search-engine"], "tags": ["scenario", "search"] },
+    { "query": "全カラムに index を貼ったら書き込み TPS が半分になった", "relevant": ["ap-index-shotgun"], "tags": ["scenario", "performance"] },
+    { "query": "誕生日不明のユーザを '0000-00-00' で代用したら年齢の平均がおかしくなった", "relevant": ["ap-fear-of-the-unknown"], "tags": ["scenario", "data-type"] },
+    { "query": "在庫を多店舗から同時更新したら一部が消えた。今はテーブルロックで凌いでいるがスケールしない", "relevant": ["ap-reduce-reduce-conflict"], "tags": ["scenario", "concurrency"] }
+  ]
+}

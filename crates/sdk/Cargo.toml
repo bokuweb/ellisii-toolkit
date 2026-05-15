@@ -1,0 +1,69 @@
+[package]
+name = "ellisii-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "High-level facade for Ellisii: index a directory, vector + keyword search, optional RAG."
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+walkdir = "2"
+futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+
+ellisii-core.workspace = true
+ellisii-parsers.workspace = true
+ellisii-parsers-core.workspace = true
+ellisii-chunker.workspace = true
+ellisii-ingest.workspace = true
+ellisii-embed-core.workspace = true
+ellisii-embed-dummy.workspace = true
+ellisii-store-core.workspace = true
+ellisii-store-memory.workspace = true
+ellisii-store-sqlite.workspace = true
+ellisii-jp-tokenizer-core.workspace = true
+ellisii-jp-tokenizer-bigram.workspace = true
+ellisii-llm-core.workspace = true
+ellisii-llm-stub.workspace = true
+ellisii-rag.workspace = true
+ellisii-query-rewriter-core.workspace = true
+ellisii-query-rewriter-passthrough.workspace = true
+ellisii-query-rewriter-llm.workspace = true
+ellisii-provence-core.workspace = true
+ellisii-provence-passthrough.workspace = true
+ellisii-ocr.workspace = true
+
+[features]
+default = []
+# llama.cpp バックエンドを有効化 (重い deps を引き込むので opt-in)。
+# `ellisii-llm-llamacpp/gguf` も併せて有効化して実 GGUF ロードまで届かせる。
+llamacpp = ["dep:ellisii-llm-llamacpp", "ellisii-llm-llamacpp/gguf"]
+# Apple Silicon Metal で日本語特化 embedding (HF model 必要)
+static-jp = ["dep:ellisii-embed-static-jp"]
+# Provence ONNX (cross-encoder rerank / context compressor)
+provence-onnx = ["dep:ellisii-provence-onnx", "ellisii-provence-onnx/real"]
+
+[dependencies.ellisii-llm-llamacpp]
+workspace = true
+optional = true
+
+[dependencies.ellisii-embed-static-jp]
+workspace = true
+optional = true
+
+[dependencies.ellisii-provence-onnx]
+workspace = true
+optional = true
+
+[dev-dependencies]
+tokio.workspace = true
+tempfile = "3"
+async-trait.workspace = true
+ellisii-rag.workspace = true
+ellisii-core.workspace = true
+ellisii-llm-core.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }

@@ -1,0 +1,25 @@
+[package]
+name = "ellisii-rag"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ellisii-core.workspace = true
+ellisii-embed-core.workspace = true
+ellisii-store-core.workspace = true
+# Scope = Option<Uuid> なので uuid 直接依存は無くてもよい
+ellisii-llm-core.workspace = true
+ellisii-query-rewriter-core.workspace = true
+regex = "1"
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+async-trait.workspace = true
+ellisii-store-memory.workspace = true
+ellisii-llm-stub.workspace = true
+ellisii-query-rewriter-passthrough.workspace = true

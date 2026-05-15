@@ -1,0 +1,19 @@
+[package]
+name = "ellisii-parsers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-core.workspace = true
+ellisii-parsers-core.workspace = true
+ellisii-parser-text.workspace = true
+ellisii-parser-markdown.workspace = true
+ellisii-parser-pdf.workspace = true
+ellisii-parser-docx.workspace = true
+ellisii-parser-xlsx.workspace = true
+ellisii-parser-pptx.workspace = true
+tokio = { workspace = true }
+
+[dev-dependencies]
+pdfium-auto = "0.3"

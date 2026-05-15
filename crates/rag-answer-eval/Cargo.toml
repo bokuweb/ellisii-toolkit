@@ -1,0 +1,14 @@
+[package]
+name = "ellisii-rag-answer-eval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+ellisii-core.workspace = true
+ellisii-llm-core.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

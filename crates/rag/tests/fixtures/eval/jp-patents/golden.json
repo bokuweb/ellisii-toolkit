@@ -1,0 +1,30 @@
+{
+  "name": "jp-patents-v1-hard",
+  "items": [
+    { "query": "スマホの充電を早く済ませたい人を助ける発明", "relevant": ["jpat-001"], "tags": ["scenario", "electronics"] },
+    { "query": "車庫入れが苦手な人のための運転補助装置", "relevant": ["jpat-002"], "tags": ["scenario", "automotive"] },
+    { "query": "焙煎したコーヒー豆をいつまでも香り良く保つ袋", "relevant": ["jpat-003"], "tags": ["scenario", "food"] },
+    { "query": "高層マンションが地震で揺れにくくなる仕組み", "relevant": ["jpat-004"], "tags": ["scenario", "architecture"] },
+    { "query": "宇宙空間で電気をたくさん作りたい衛星の工夫", "relevant": ["jpat-005"], "tags": ["scenario", "aerospace"] },
+    { "query": "工場で見たことのない傷を自動で見つけたい", "relevant": ["jpat-006"], "tags": ["scenario", "manufacturing"] },
+    { "query": "強風時に風車のブレードが壊れないように事前に角度を変える仕組み", "relevant": ["jpat-007"], "tags": ["scenario", "energy"] },
+    { "query": "1 日 3 回飲む薬を 1 回で済ませる工夫", "relevant": ["jpat-008"], "tags": ["scenario", "pharma"] },
+    { "query": "人工関節を骨にしっかりくっつけて長く使えるようにする", "relevant": ["jpat-009"], "tags": ["scenario", "medical"] },
+    { "query": "手が動かせない人でも目だけでパソコンを操作したい", "relevant": ["jpat-010"], "tags": ["scenario", "accessibility"] },
+    { "query": "壁を薄くしても部屋を寒くさせない素材", "relevant": ["jpat-011"], "tags": ["scenario", "materials"] },
+    { "query": "工場でロボットの近くで人が安全に働けるようにする仕組み", "relevant": ["jpat-012"], "tags": ["scenario", "robotics"] },
+    { "query": "空気中の CO2 から燃料を作る方法", "relevant": ["jpat-013"], "tags": ["scenario", "chemistry"] },
+    { "query": "送電線の絶縁体を雨水で自分で綺麗にする工夫", "relevant": ["jpat-014"], "tags": ["scenario", "electrical"] },
+    { "query": "味噌の出来上がりを毎回同じ味にしたい", "relevant": ["jpat-015"], "tags": ["scenario", "food"] },
+    { "query": "インターネットの通信が遅くなる前に予防する仕組み", "relevant": ["jpat-016"], "tags": ["scenario", "network"] },
+    { "query": "海水から飲める水を効率良く作る装置", "relevant": ["jpat-017"], "tags": ["scenario", "water"] },
+    { "query": "おばあちゃんがペットボトルを開けやすくなる蓋の工夫", "relevant": ["jpat-018"], "tags": ["scenario", "consumer"] },
+    { "query": "MRI 検査の時間を短くしたい", "relevant": ["jpat-019"], "tags": ["scenario", "medical"] },
+    { "query": "騒がしい場所でも音声認識の精度を保ちたい", "relevant": ["jpat-020"], "tags": ["scenario", "audio"] },
+    { "query": "電動自転車のバッテリーを長持ちさせる制御方法", "relevant": ["jpat-021"], "tags": ["scenario", "automotive"] },
+    { "query": "農家がスマホで葉っぱを撮って病気を判定するシステム", "relevant": ["jpat-022"], "tags": ["scenario", "agriculture"] },
+    { "query": "燃料電池の発電性能を上げるための内部構造", "relevant": ["jpat-023"], "tags": ["scenario", "energy"] },
+    { "query": "ホウレンソウを長持ちさせる冷蔵庫の工夫", "relevant": ["jpat-024"], "tags": ["scenario", "food"] },
+    { "query": "うるさい場所でも家族の声だけ聞き取りやすくする補聴器", "relevant": ["jpat-025"], "tags": ["scenario", "medical"] }
+  ]
+}

@@ -1,0 +1,15 @@
+[package]
+name = "ellisii-jp-tokenizer-vaporetto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-jp-tokenizer-core.workspace = true
+vaporetto = { version = "0.6", optional = true }
+zstd = { version = "0.13", optional = true }
+
+[features]
+default = []
+# 実 Vaporetto モデルを使う (ビルド時に vaporetto crate をリンク)
+real = ["dep:vaporetto", "dep:zstd"]

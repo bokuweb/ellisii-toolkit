@@ -1,0 +1,16 @@
+{
+  "name": "jp-manual-v1",
+  "_note": "relevant は parent_id (manual-*) を列挙。子 doc の source_id が parent_id 単位で共有される設計 (eval_fixtures harness 側で build) なので、dedup_by_source = parent-level dedup と等価になる。",
+  "items": [
+    { "query": "TCP接続を許可するファイアウォールの設定方法と通信路の暗号化要件", "relevant": ["manual-network", "manual-security"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "MySQLレプリケーション通信における認証情報の暗号化と保管時データ暗号化", "relevant": ["manual-database", "manual-security"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "Dockerコンテナへキャッシュ層を追加する際の配置設計", "relevant": ["manual-deploy", "manual-perf"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "CI/CDパイプラインにおけるDBマイグレーションのロールバック安全策", "relevant": ["manual-deploy", "manual-database"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "Kubernetes pod のネットワーク到達性を監視する仕組み", "relevant": ["manual-deploy", "manual-network", "manual-perf"], "tags": ["multi-parent", "3-domain"] },
+    { "query": "サービス間アカウントの認証情報をデータベース接続で利用する際の設計", "relevant": ["manual-security", "manual-database"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "CDNにキャッシュ可能なAPIレスポンスを返すときのTLSとプライバシ設定", "relevant": ["manual-perf", "manual-security"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "Redisクラスタ運用時の監視メトリクスとアクセス制御", "relevant": ["manual-database", "manual-perf", "manual-network"], "tags": ["multi-parent", "3-domain"] },
+    { "query": "DNSレコードのTTLを短縮するときの監視とCDNへの影響", "relevant": ["manual-network", "manual-perf"], "tags": ["multi-parent", "2-domain"] },
+    { "query": "本番DBへのDDL実行と監査ログ保管の要件", "relevant": ["manual-database", "manual-security"], "tags": ["multi-parent", "2-domain"] }
+  ]
+}

@@ -1,0 +1,43 @@
+[package]
+name = "ellisii-ocr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+ellisii-core.workspace = true
+rayon = "1"
+serde.workspace = true
+tokio = { workspace = true }
+tracing.workspace = true
+# 0.0.9 で `cascade` モジュールが pub になり、行ごとに 30/50/100 char モデルを
+# 振り分けるための bucket estimator (`estimate_pred_char_bucket`) が公開された。
+# 0.0.8 で Session intra_threads の auto-tune (pool * intra ≒ logical cores)。
+# 0.0.7 で英文行末ハイフネーション結合 (`join_latin_hyphenated_lines`)。
+# 0.0.4 で `DeimPool` / CoreML EP (parseq/DEIM 非対応で実質 CPU fallback)。
+ndlocr-lite-rs = { git = "https://github.com/bokuweb/ndlocr-lite-rs", tag = "0.0.12", optional = true }
+
+[features]
+default = []
+onnx = ["dep:ndlocr-lite-rs", "ndlocr-lite-rs/onnx"]
+# CoreML EP を有効化。macOS の M-series で DEIM/PARSeq を ANE/GPU に乗せると
+# CPU 比 ~3-5x 速くなる (大量ページのスキャン PDF 取り込みに大きく効く)。
+# 非対応プラットフォームでは ndlocr-lite-rs 側が自動的に CPU EP に
+# fallback する。
+coreml = ["onnx", "ndlocr-lite-rs/coreml"]
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+# Real-model OCR bench. Skipped (early return with eprintln) when fixtures are
+# not present, so `cargo bench -p ellisii-ocr` is safe to run unconditionally.
+# To run for real:
+#   ELLISII_BENCH_MODEL_DIR=~/Library/Application\ Support/ellisii/models/ndlocr \
+#   ELLISII_BENCH_IMAGES=~/path/to/png-dir \
+#   cargo bench -p ellisii-ocr --bench ocr_bench --features onnx
+[[bench]]
+name = "ocr_bench"
+harness = false
+required-features = ["onnx"]

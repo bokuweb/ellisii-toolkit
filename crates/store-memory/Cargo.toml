@@ -1,0 +1,16 @@
+[package]
+name = "ellisii-store-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+parking_lot = "0.12"
+ellisii-core.workspace = true
+ellisii-store-core.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+uuid.workspace = true

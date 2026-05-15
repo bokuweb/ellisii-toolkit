@@ -1,0 +1,13 @@
+[package]
+name = "ellisii-provence-passthrough"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ellisii-core.workspace = true
+ellisii-provence-core.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }

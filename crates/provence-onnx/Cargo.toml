@@ -1,0 +1,22 @@
+[package]
+name = "ellisii-provence-onnx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+anyhow.workspace = true
+ellisii-core.workspace = true
+ellisii-provence-core.workspace = true
+tokio = { workspace = true }
+ort = { version = "=2.0.0-rc.12", optional = true }
+ndarray = { version = "0.17", optional = true }
+tokenizers = { version = "0.21", default-features = false, features = ["onig"], optional = true }
+
+[features]
+default = []
+real = ["dep:ort", "dep:ndarray", "dep:tokenizers"]
+
+[dev-dependencies]
+tokio = { workspace = true }

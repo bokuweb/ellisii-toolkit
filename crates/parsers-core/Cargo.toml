@@ -1,0 +1,9 @@
+[package]
+name = "ellisii-parsers-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+ellisii-core.workspace = true

@@ -1,0 +1,33 @@
+{
+  "name": "jp-civil-law-hard-v1",
+  "items": [
+    { "query": "中学生がアルバイト代でゲーム機を購入したが、親はキャンセルできるか", "relevant": ["minpou-5"], "tags": ["scenario", "minor"] },
+    { "query": "知人と相談して、税逃れのために売買契約書だけ作った場合の効力", "relevant": ["minpou-94"], "tags": ["scenario", "legal-act"] },
+    { "query": "ネットショップで商品の値段を一桁勘違いして注文した場合、契約を解除できるか", "relevant": ["minpou-95"], "tags": ["scenario", "legal-act"] },
+    { "query": "嘘をつかれて買わされた商品の契約はあとから無かったことにできるか", "relevant": ["minpou-96"], "tags": ["scenario", "legal-act"] },
+    { "query": "脅されて結ばされた契約はどう扱われるか", "relevant": ["minpou-96"], "tags": ["paraphrase", "legal-act"] },
+    { "query": "認知症が進んで判断能力が無くなった人を法的に保護する制度", "relevant": ["minpou-7"], "tags": ["paraphrase", "guardianship"] },
+    { "query": "判断能力が著しく不十分な人をサポートする制度", "relevant": ["minpou-11"], "tags": ["paraphrase", "guardianship"] },
+    { "query": "家族の一人が長年行方不明のとき、法律上死亡したものとして扱う手続き", "relevant": ["minpou-30"], "tags": ["scenario", "absence"] },
+    { "query": "土地に建っている家は不動産か動産か", "relevant": ["minpou-86"], "tags": ["scenario", "thing"] },
+    { "query": "畑で取れた野菜は誰のものか", "relevant": ["minpou-88"], "tags": ["scenario", "thing"] },
+    { "query": "違法薬物の売買を約束する取引は有効か", "relevant": ["minpou-90"], "tags": ["scenario", "legal-act"] },
+    { "query": "メールで送った契約申込みはいつから有効になるか", "relevant": ["minpou-97"], "tags": ["scenario", "legal-act"] },
+    { "query": "本人に代わって他人が結んだ契約は誰の契約になるか", "relevant": ["minpou-99"], "tags": ["paraphrase", "agency"] },
+    { "query": "代理権がないのに代理を装った人と取引してしまった場合の本人の責任", "relevant": ["minpou-109"], "tags": ["scenario", "agency"] },
+    { "query": "詐欺で結ばれた契約を取り消した場合、最初から契約はなかったことになるか", "relevant": ["minpou-121"], "tags": ["scenario", "legal-act"] },
+    { "query": "他人の土地を20年以上自分の土地として使い続けたら所有権を取得できるか", "relevant": ["minpou-162"], "tags": ["scenario", "ownership"] },
+    { "query": "土地を買ったが登記をしていない場合、第三者に主張できるか", "relevant": ["minpou-177"], "tags": ["scenario", "ownership"] },
+    { "query": "中古品を盗品と知らずに購入した場合、所有権を取得できるか", "relevant": ["minpou-192"], "tags": ["scenario", "ownership"] },
+    { "query": "不注意で他人の自転車を壊してしまった場合の賠償責任", "relevant": ["minpou-709"], "tags": ["scenario", "tort"] },
+    { "query": "従業員が業務中に交通事故を起こした場合、会社にも責任があるか", "relevant": ["minpou-715"], "tags": ["scenario", "tort"] },
+    { "query": "事故被害者にも落ち度があった場合、賠償額は減額されるか", "relevant": ["minpou-722"], "tags": ["paraphrase", "tort"] },
+    { "query": "事故から何年経つと損害賠償を請求できなくなるか", "relevant": ["minpou-724"], "tags": ["scenario", "tort"] },
+    { "query": "離婚すると相手の家族との関係はどうなるか", "relevant": ["minpou-728"], "tags": ["scenario", "family"] },
+    { "query": "夫が長年家を出ていて連絡がつかないとき、離婚を裁判所に求められるか", "relevant": ["minpou-770"], "tags": ["scenario", "family"] },
+    { "query": "亡くなった親の借金は子も背負うのか", "relevant": ["minpou-896"], "tags": ["scenario", "inheritance"] },
+    { "query": "夫婦と子供がいる家庭で夫が亡くなった場合の遺産の分け方", "relevant": ["minpou-900"], "tags": ["scenario", "inheritance"] },
+    { "query": "自分で書く遺言書を作るときに守らなければならない方式", "relevant": ["minpou-968"], "tags": ["paraphrase", "inheritance"] },
+    { "query": "貸したお金を返してもらえないときの賠償請求", "relevant": ["minpou-415"], "tags": ["scenario", "obligation"] }
+  ]
+}

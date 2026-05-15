@@ -1,0 +1,48 @@
+{
+  "name": "jp-patent-docs-v1",
+  "items": [
+    { "query": "折りたたみ表示装置の請求項1の構成要件", "relevant": ["p1-foldable-claim1"], "tags": ["claim", "definition"] },
+    { "query": "ヒンジ機構のカム機構はどのような潤滑がされているか", "relevant": ["p1-foldable-claim1"], "tags": ["claim", "paraphrase"] },
+    { "query": "折りたたみスマホのヒンジ部分の摩耗対策", "relevant": ["p1-foldable-means", "p1-foldable-claim1"], "tags": ["paraphrase", "hard", "multi-relevant"] },
+    { "query": "可撓性ディスプレイの折り目はどのくらい曲げても大丈夫か", "relevant": ["p1-foldable-means", "p1-foldable-embodiment"], "tags": ["paraphrase", "hard", "multi-relevant"] },
+    { "query": "折りたたみ装置の開閉耐久性はどの程度向上したか", "relevant": ["p1-foldable-effect"], "tags": ["effect", "paraphrase"] },
+    { "query": "従来のヒンジ装置の課題は何か", "relevant": ["p1-foldable-bg"], "tags": ["bg", "paraphrase"] },
+    { "query": "回動軸の位置をどこに設定したか", "relevant": ["p1-foldable-means"], "tags": ["paraphrase", "hard"] },
+    { "query": "請求項3で追加された限定事項", "relevant": ["p1-foldable-claim3"], "tags": ["claim", "paraphrase"] },
+    { "query": "特開2024-100001 の発明の名称", "relevant": ["p1-foldable-meta"], "tags": ["meta"] },
+
+    { "query": "リチウムイオン電池の電解液の組成", "relevant": ["p2-battery-claim1"], "tags": ["claim", "definition"] },
+    { "query": "FEC を電解液に何%入れているか", "relevant": ["p2-battery-claim1"], "tags": ["paraphrase", "hard"] },
+    { "query": "シリコン負極を採用する場合の課題", "relevant": ["p2-battery-bg", "p2-battery-problem"], "tags": ["bg", "paraphrase", "multi-relevant"] },
+    { "query": "シリコン含有負極でサイクル特性を改善する電解液の組成", "relevant": ["p2-battery-claim1", "p2-battery-means"], "tags": ["paraphrase", "hard", "multi-relevant"] },
+    { "query": "500 サイクル後の容量維持率はいくらか", "relevant": ["p2-battery-effect", "p2-battery-problem"], "tags": ["effect", "multi-relevant"] },
+    { "query": "LiFSI と LiPF6 を併用するメリット", "relevant": ["p2-battery-means"], "tags": ["paraphrase", "hard"] },
+    { "query": "ビニレンカーボネートの添加量", "relevant": ["p2-battery-claim1"], "tags": ["claim", "paraphrase"] },
+    { "query": "実施例で用いた負極活物質", "relevant": ["p2-battery-embodiment"], "tags": ["embodiment", "paraphrase"] },
+
+    { "query": "前方衝突予測装置に使われるセンサ", "relevant": ["p3-driving-claim1"], "tags": ["claim", "paraphrase"] },
+    { "query": "ニューラルネットワークに何を入力して衝突確率を出すか", "relevant": ["p3-driving-claim1"], "tags": ["claim", "paraphrase", "hard"] },
+    { "query": "カメラから抽出する挙動特徴量の例", "relevant": ["p3-driving-claim2"], "tags": ["claim", "paraphrase"] },
+    { "query": "ブレーキランプ点灯は判定要素に含まれるか", "relevant": ["p3-driving-claim2"], "tags": ["paraphrase", "hard"] },
+    { "query": "前方車両のふらつきを警報判定に使う仕組み", "relevant": ["p3-driving-means", "p3-driving-claim1"], "tags": ["paraphrase", "hard", "multi-relevant"] },
+    { "query": "TTC ベースの従来手法の限界", "relevant": ["p3-driving-bg"], "tags": ["bg", "paraphrase"] },
+    { "query": "渋滞時の警報閾値はいくつか", "relevant": ["p3-driving-claim3"], "tags": ["claim", "paraphrase", "hard"] },
+    { "query": "実車試験で警報タイミングはどのくらい早くなったか", "relevant": ["p3-driving-effect"], "tags": ["effect", "paraphrase"] },
+    { "query": "誤警報率はどのくらい改善したか", "relevant": ["p3-driving-effect"], "tags": ["effect", "paraphrase"] },
+    { "query": "実施形態で使われている物体検出器の方式", "relevant": ["p3-driving-embodiment"], "tags": ["embodiment", "paraphrase", "hard"] },
+
+    { "query": "機械翻訳の訳語選択でジャンル情報をどう使うか", "relevant": ["p4-mt-claim1", "p4-mt-means"], "tags": ["paraphrase", "hard", "multi-relevant"] },
+    { "query": "コサイン類似度に何を加算するか", "relevant": ["p4-mt-claim1"], "tags": ["claim", "paraphrase"] },
+    { "query": "対象としている文書ジャンルは何種類か", "relevant": ["p4-mt-claim2"], "tags": ["claim", "paraphrase", "hard"] },
+    { "query": "多義語の訳し分けが従来手法でできない理由", "relevant": ["p4-mt-bg"], "tags": ["bg", "paraphrase", "hard"] },
+    { "query": "特許文書ドメインの BLEU 改善幅", "relevant": ["p4-mt-effect"], "tags": ["effect", "paraphrase"] },
+    { "query": "ジャンル別バイアスはどう学習されているか", "relevant": ["p4-mt-means"], "tags": ["paraphrase", "hard"] },
+    { "query": "エンコーダに使われるモデルは何か", "relevant": ["p4-mt-embodiment"], "tags": ["embodiment", "paraphrase"] },
+    { "query": "先行技術文献として何が引用されているか", "relevant": ["p4-mt-prior-art"], "tags": ["prior-art", "paraphrase"] },
+
+    { "query": "ヒンジ機構の発明と機械翻訳の発明の出願人は同じか", "relevant": ["p1-foldable-meta", "p4-mt-meta"], "tags": ["cross-doc", "hard", "multi-relevant"] },
+    { "query": "ニューラルネットワークを使っている発明はどれか", "relevant": ["p3-driving-claim1", "p4-mt-claim1"], "tags": ["cross-doc", "hard", "multi-relevant"] },
+    { "query": "発明が解決しようとする課題が記載されているチャンク", "relevant": ["p1-foldable-problem", "p2-battery-problem", "p3-driving-problem", "p4-mt-problem"], "tags": ["cross-doc", "structural"] },
+    { "query": "実施形態の図番号と符号", "relevant": ["p1-foldable-embodiment", "p3-driving-embodiment", "p4-mt-embodiment"], "tags": ["cross-doc", "structural"] }
+  ]
+}

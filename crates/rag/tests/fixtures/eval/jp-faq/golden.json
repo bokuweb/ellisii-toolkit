@@ -1,0 +1,28 @@
+{
+  "name": "jp-faq-v1",
+  "_note": "Customer support / 社内ヘルプデスク風の FAQ corpus (Q-A pair 形式)。query は FAQ の Q 自体ではなく user の自然な言い回し (paraphrase) でくる想定。文書類型として article/section 系とは異なる shape を提供 (Run 63)。",
+  "items": [
+    { "query": "ログインパスワードを忘れちゃった", "relevant": ["faq-pw-reset"], "tags": ["paraphrase"] },
+    { "query": "二段階認証を設定したい", "relevant": ["faq-mfa-setup"], "tags": ["paraphrase"] },
+    { "query": "Authenticator アプリを入れた携帯をなくした場合", "relevant": ["faq-mfa-lost-device"], "tags": ["paraphrase", "scenario"] },
+    { "query": "Pro プランから Free に戻したい", "relevant": ["faq-billing-plan-change"], "tags": ["scenario"] },
+    { "query": "1 ヶ月で解約したら払い戻しはあるか", "relevant": ["faq-billing-refund"], "tags": ["scenario"] },
+    { "query": "経費精算のため過去の領収書 PDF が欲しい", "relevant": ["faq-invoice-download"], "tags": ["paraphrase"] },
+    { "query": "登録した情報を一括ダウンロードしたい", "relevant": ["faq-export-csv"], "tags": ["paraphrase"] },
+    { "query": "退会したい", "relevant": ["faq-delete-account"], "tags": ["paraphrase"] },
+    { "query": "同僚を team に追加する方法", "relevant": ["faq-team-invite"], "tags": ["paraphrase"] },
+    { "query": "編集者ロールでは何ができますか", "relevant": ["faq-role-permissions"], "tags": ["scoped"] },
+    { "query": "バックアップコードをもう一度発行したい", "relevant": ["faq-2fa-recovery"], "tags": ["paraphrase"] },
+    { "query": "REST API を呼びたい認証トークンの作り方", "relevant": ["faq-api-key-create"], "tags": ["paraphrase"] },
+    { "query": "Free プランで 1 分間にリクエストできる回数", "relevant": ["faq-rate-limit"], "tags": ["scoped"] },
+    { "query": "Webhook payload の真正性確認", "relevant": ["faq-webhook-secret"], "tags": ["paraphrase"] },
+    { "query": "サーバの所在地はどこですか", "relevant": ["faq-data-region"], "tags": ["paraphrase"] },
+    { "query": "Okta と連携してシングルサインオンしたい", "relevant": ["faq-sso-saml"], "tags": ["paraphrase"] },
+    { "query": "誰が何を操作したかのログを 6 ヶ月以上保持できるか", "relevant": ["faq-audit-log"], "tags": ["scenario"] },
+    { "query": "サービスが止まった場合の補償", "relevant": ["faq-uptime-sla"], "tags": ["paraphrase"] },
+    { "query": "災害でデータが消えないようにする仕組み", "relevant": ["faq-backup-frequency"], "tags": ["paraphrase"] },
+    { "query": "iPhone のどのバージョンから使えるか", "relevant": ["faq-mobile-app"], "tags": ["paraphrase"] },
+    { "query": "MFA とバックアップコードの両方を紛失したらどうなるか", "relevant": ["faq-mfa-lost-device", "faq-2fa-recovery"], "tags": ["multi-doc", "hard"] },
+    { "query": "管理者ロールが課金を変更できる権限を持っているか", "relevant": ["faq-role-permissions", "faq-billing-plan-change"], "tags": ["multi-doc", "hard"] }
+  ]
+}

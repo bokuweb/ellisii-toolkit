@@ -1,0 +1,13 @@
+[package]
+name = "ellisii-query-rewriter-passthrough"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ellisii-core.workspace = true
+ellisii-query-rewriter-core.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

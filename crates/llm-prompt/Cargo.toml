@@ -1,0 +1,8 @@
+[package]
+name = "ellisii-llm-prompt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-llm-core.workspace = true

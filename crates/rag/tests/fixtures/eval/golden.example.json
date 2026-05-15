@@ -1,0 +1,20 @@
+{
+  "name": "smoke-jp-law",
+  "items": [
+    {
+      "query": "民法第94条の意思表示について教えて",
+      "relevant": ["minpou-94"],
+      "tags": ["jp-law", "article-id"]
+    },
+    {
+      "query": "通謀虚偽表示は無効か",
+      "relevant": ["minpou-94"],
+      "tags": ["jp-law", "concept"]
+    },
+    {
+      "query": "補助開始の審判の効果",
+      "relevant": ["minpou-15", "minpou-16"],
+      "tags": ["jp-law", "multi-relevant"]
+    }
+  ]
+}

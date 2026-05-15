@@ -1,0 +1,11 @@
+[package]
+name = "ellisii-parser-docx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-core.workspace = true
+ellisii-parsers-core.workspace = true
+quick-xml.workspace = true
+zip.workspace = true

@@ -1,0 +1,21 @@
+target/
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.local
+src-tauri/gen/
+src-tauri/target/
+ui/dist/
+ui/node_modules/
+*.pen
+*.tsbuildinfo
+src-tauri/resources/models/*
+# tauri.conf.json の `resources/models/**/*` glob が空マッチで build 失敗するため、
+# placeholder の .gitkeep だけは track する。実 model 本体は ignore のまま。
+!src-tauri/resources/models/.gitkeep
+.venv-optimum/
+vendor/
+.claude/
+figma/

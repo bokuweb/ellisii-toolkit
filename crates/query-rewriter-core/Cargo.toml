@@ -1,0 +1,9 @@
+[package]
+name = "ellisii-query-rewriter-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ellisii-core.workspace = true
