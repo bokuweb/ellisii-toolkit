@@ -12,9 +12,15 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
   # ort 2.x downloads prebuilt onnxruntime binaries; keep them cacheable.
   ORT_STRATEGY: download
+  # We intentionally do *not* set `RUSTFLAGS: -D warnings` here. The
+  # clippy step enforces `-- -D warnings` explicitly; the test step
+  # should compile tests even when their bodies have minor unused-import
+  # style warnings (they're caught locally and during clippy on the
+  # libs / bins). A global RUSTFLAGS would make every `cargo` invocation
+  # strict, including downstream dep compilations, which causes friction
+  # for no real safety benefit.
 
 jobs:
   fmt:

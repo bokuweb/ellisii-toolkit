@@ -6,7 +6,7 @@
 //!   通常 retrieve では拾えなかったチャンクが top-k に入りうること。
 
 use async_trait::async_trait;
-use ellisii_core::{Chunk, Result, SearchHit};
+use ellisii_core::{Chunk, Result};
 use ellisii_embed_core::Embedder;
 use ellisii_llm_stub::EchoLlm;
 use ellisii_query_rewriter_core::{QueryRewriter, RewrittenQueries};

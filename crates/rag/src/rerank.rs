@@ -529,7 +529,7 @@ mod tests {
     #[test]
     fn heading_boost_uses_max_segment() {
         // heading_path の中で最大のマッチ率が採用される
-        let mut h = hit_with_heading(
+        let h = hit_with_heading(
             "本文",
             0.10,
             vec!["関係ない章", "通謀虚偽表示", "もっと別の節"],

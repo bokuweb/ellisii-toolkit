@@ -257,6 +257,9 @@ pub use imp::ProvenceOnnx;
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Only the stub tests below (gated `#[cfg(not(feature = "real"))]`)
+    // construct PathBufs; under `--all-features` this import is dead.
+    #[cfg(not(feature = "real"))]
     use std::path::PathBuf;
 
     #[test]
