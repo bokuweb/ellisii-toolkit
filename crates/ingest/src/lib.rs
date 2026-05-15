@@ -18,15 +18,37 @@ pub use ocr_cache::OcrCache;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "stage", rename_all = "kebab-case")]
 pub enum Progress {
-    Started { source_id: Uuid, path: String },
-    Parsed { source_id: Uuid, blocks: usize },
+    Started {
+        source_id: Uuid,
+        path: String,
+    },
+    Parsed {
+        source_id: Uuid,
+        blocks: usize,
+    },
     /// PDF の OCR 経路で 1 ページ処理が終わるたびに発火する。
     /// 多ページのスキャン PDF で「parsing のまま固まったように見える」問題を防ぐ。
-    Ocr { source_id: Uuid, page: u32, total: u32 },
-    Chunked { source_id: Uuid, chunks: usize },
-    Embedded { source_id: Uuid, chunks: usize },
-    Stored { source_id: Uuid, chunks: usize },
-    Failed { source_id: Uuid, error: String },
+    Ocr {
+        source_id: Uuid,
+        page: u32,
+        total: u32,
+    },
+    Chunked {
+        source_id: Uuid,
+        chunks: usize,
+    },
+    Embedded {
+        source_id: Uuid,
+        chunks: usize,
+    },
+    Stored {
+        source_id: Uuid,
+        chunks: usize,
+    },
+    Failed {
+        source_id: Uuid,
+        error: String,
+    },
 }
 
 pub type ProgressSink = Arc<dyn Fn(Progress) + Send + Sync + 'static>;
@@ -139,8 +161,7 @@ impl<E: Embedder, S: VectorStore> Ingestor<E, S> {
                             Ok(t) => Some(t),
                             Err(e) => {
                                 if parsed.blocks.is_empty() {
-                                    let err =
-                                        Error::Parse(format!("page_count failed: {e}"));
+                                    let err = Error::Parse(format!("page_count failed: {e}"));
                                     emit(Progress::Failed {
                                         source_id,
                                         error: err.to_string(),
@@ -467,9 +488,8 @@ async fn ocr_pdf_pages_streaming(
     // `ocr_images_batch` API は trait に残してあり (NdlocrBackend で実装済)、
     // 将来 GPU/CoreML EP が動くようになれば呼び替えで cross-page batched を
     // 復活できる。
-    let (rast_tx, rast_rx) = tokio::sync::mpsc::channel::<ellisii_ocr::RasterizedPage>(
-        (concurrency * 2).max(2),
-    );
+    let (rast_tx, rast_rx) =
+        tokio::sync::mpsc::channel::<ellisii_ocr::RasterizedPage>((concurrency * 2).max(2));
 
     let rasterize_t0 = std::time::Instant::now();
     let producer = async {
@@ -614,10 +634,7 @@ mod tests {
     /// 閉じ括弧で終わる行は段落終端扱い (`」` の後に CJK が来ても繋がない)。
     #[test]
     fn join_ocr_lines_keeps_newline_after_closing_bracket() {
-        let blocks = vec![
-            ocr_block("彼は「行こう」"),
-            ocr_block("と言った。"),
-        ];
+        let blocks = vec![ocr_block("彼は「行こう」"), ocr_block("と言った。")];
         let joined = join_ocr_lines_to_paragraph(&blocks);
         assert_eq!(joined, "彼は「行こう」\nと言った。");
     }
@@ -831,21 +848,19 @@ mod tests {
                 "理由はクエリの効率と整合性に問題があるため。",
             ],
         };
-        let blocks = super::ocr_pdf_pages_streaming(
-            &rast,
-            &ocr,
-            "/dummy.pdf",
-            &[1, 2],
-            &|_| {},
-            None,
-        )
-        .await
-        .unwrap();
+        let blocks =
+            super::ocr_pdf_pages_streaming(&rast, &ocr, "/dummy.pdf", &[1, 2], &|_| {}, None)
+                .await
+                .unwrap();
         // 2 ページ要求 → 2 ParsedBlock (1 ページにつき 1 個)。3 行 × 2 ページ
         // = 6 ParsedBlock になっていたら旧挙動。
         assert_eq!(blocks.len(), 2, "expected 1 ParsedBlock per page");
         for b in &blocks {
-            assert!(b.text.contains("第1章"), "merged text missing heading: {:?}", b.text);
+            assert!(
+                b.text.contains("第1章"),
+                "merged text missing heading: {:?}",
+                b.text
+            );
             assert!(
                 b.text.contains("アンチパターン"),
                 "merged text missing body: {:?}",
@@ -853,7 +868,11 @@ mod tests {
             );
             // 行間は \n で区切られている (chunker の recursive_split が \n を
             // セパレータに含むので、結合してもページ内の自然な切れ目は残る)。
-            assert!(b.text.contains('\n'), "lines should be joined with \\n: {:?}", b.text);
+            assert!(
+                b.text.contains('\n'),
+                "lines should be joined with \\n: {:?}",
+                b.text
+            );
         }
     }
 
@@ -867,16 +886,10 @@ mod tests {
     #[tokio::test]
     async fn ocr_pdf_pages_streaming_skips_render_when_no_pages_requested() {
         let rast = FakeRasterizer::with_total(3);
-        let blocks = super::ocr_pdf_pages_streaming(
-            &rast,
-            &PerPathOcr,
-            "/dummy.pdf",
-            &[],
-            &|_| {},
-            None,
-        )
-        .await
-        .unwrap();
+        let blocks =
+            super::ocr_pdf_pages_streaming(&rast, &PerPathOcr, "/dummy.pdf", &[], &|_| {}, None)
+                .await
+                .unwrap();
         assert!(blocks.is_empty());
         assert!(rast.rendered_calls().is_empty());
     }
@@ -988,9 +1001,7 @@ mod tests {
 
         let r = super::ocr_pdf_pages_streaming(
             &BrokenRasterizer,
-            &FakeOcr {
-                text: "x".into(),
-            },
+            &FakeOcr { text: "x".into() },
             path.to_str().unwrap(),
             &[1, 2, 3],
             &|_| {},

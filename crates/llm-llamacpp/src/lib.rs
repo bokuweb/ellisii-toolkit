@@ -40,9 +40,7 @@ impl LlamaConfig {
     /// が指定されていればそれを優先する。
     pub fn new(model_path: impl Into<std::path::PathBuf>, family: ModelFamily) -> Self {
         let model_path: std::path::PathBuf = model_path.into();
-        let model_bytes = std::fs::metadata(&model_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
+        let model_bytes = std::fs::metadata(&model_path).map(|m| m.len()).unwrap_or(0);
         let total_ram_bytes = detect_total_ram_bytes();
         let model_gib = bytes_to_gib(model_bytes);
         let total_gib = bytes_to_gib(total_ram_bytes);
@@ -75,9 +73,8 @@ impl LlamaConfig {
                     if vram_gib >= model_gib {
                         (vram_gib - model_gib).max(0.5)
                     } else {
-                        ((vram_gib - model_gib).max(0.0)
-                            + (total_gib - reserve_gib).max(0.5))
-                        .max(0.5)
+                        ((vram_gib - model_gib).max(0.0) + (total_gib - reserve_gib).max(0.5))
+                            .max(0.5)
                     }
                 } else {
                     // VRAM 値が取れなかった = nvidia-smi 失敗 / AMD GPU 等。
@@ -187,11 +184,8 @@ impl LlamaConfig {
         let detected_pcores = cpu_topology::detect_performance_core_count();
         let detected_total = cpu_topology::detect_total_physical_core_count();
         let is_cpu = matches!(mode, RuntimeMode::Cpu);
-        let n_threads = cpu_topology::resolve_n_threads(
-            env_threads.as_deref(),
-            is_cpu,
-            detected_pcores,
-        );
+        let n_threads =
+            cpu_topology::resolve_n_threads(env_threads.as_deref(), is_cpu, detected_pcores);
         let n_threads_batch = cpu_topology::resolve_n_threads_batch(
             env_threads_batch.as_deref(),
             is_cpu,
@@ -389,8 +383,8 @@ mod backend {
 
 pub use backend::LlamaCppBackend;
 
-pub mod feasibility;
 pub mod cpu_topology;
+pub mod feasibility;
 
 /// KV snapshot のファイル名指紋。互換でない設定 (model 違い・量子化違い・GPU
 /// offload 量違い・family 違い) で誤 load が起きないよう、関係するパラメータと
@@ -661,7 +655,6 @@ mod imp {
             })
         }
     }
-
 
     #[async_trait]
     impl LlmBackend for LlamaCppBackend {
@@ -1165,9 +1158,15 @@ mod tests {
     fn parse_kv_type_invalid_env_falls_through() {
         use llama_cpp_2::context::params::KvCacheType;
         // 不正な env → tier_default に倒れる (low_spec=false なら tier そのまま)
-        assert_eq!(parse_kv_type(Some("garbage"), false, "q8_0"), KvCacheType::Q8_0);
+        assert_eq!(
+            parse_kv_type(Some("garbage"), false, "q8_0"),
+            KvCacheType::Q8_0
+        );
         // 不正な env + low_spec=true → low_spec で Q4_0
-        assert_eq!(parse_kv_type(Some("garbage"), true, "f16"), KvCacheType::Q4_0);
+        assert_eq!(
+            parse_kv_type(Some("garbage"), true, "f16"),
+            KvCacheType::Q4_0
+        );
     }
 
     #[test]

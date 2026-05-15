@@ -103,9 +103,7 @@ impl Transcriber for EchoTranscriber {
         let duration_ms = (frames as f64 * 1000.0 / spec.sample_rate.max(1) as f64) as u64;
         let stub_text = format!(
             "[EchoTranscriber stub] {} ({} ch @ {} Hz, {} ms)",
-            wav.file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("audio"),
+            wav.file_name().and_then(|s| s.to_str()).unwrap_or("audio"),
             spec.channels,
             spec.sample_rate,
             duration_ms
@@ -164,9 +162,7 @@ pub async fn parse_audio(
 #[cfg(feature = "whispercpp")]
 mod whispercpp_backend {
     use super::*;
-    use whisper_rs::{
-        FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters,
-    };
+    use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
     /// whisper.cpp の Rust binding を使った STT 実装。
     pub struct WhisperCppTranscriber {
@@ -198,11 +194,7 @@ mod whispercpp_backend {
 
     #[async_trait]
     impl Transcriber for WhisperCppTranscriber {
-        async fn transcribe(
-            &self,
-            wav: &Path,
-            lang_hint: Option<&str>,
-        ) -> Result<Transcript> {
+        async fn transcribe(&self, wav: &Path, lang_hint: Option<&str>) -> Result<Transcript> {
             // hound で wav を読み込み、16kHz mono f32 に正規化して whisper に渡す。
             let reader = hound::WavReader::open(wav)?;
             let spec = reader.spec();
@@ -352,17 +344,25 @@ mod tests {
         struct WhiteOnly;
         #[async_trait]
         impl Transcriber for WhiteOnly {
-            async fn transcribe(
-                &self,
-                _wav: &Path,
-                _lang: Option<&str>,
-            ) -> Result<Transcript> {
+            async fn transcribe(&self, _wav: &Path, _lang: Option<&str>) -> Result<Transcript> {
                 Ok(Transcript {
                     language: "ja".into(),
                     segments: vec![
-                        Segment { start_ms: 0, end_ms: 100, text: "  ".into() },
-                        Segment { start_ms: 100, end_ms: 200, text: "本文あり".into() },
-                        Segment { start_ms: 200, end_ms: 300, text: "\n\t".into() },
+                        Segment {
+                            start_ms: 0,
+                            end_ms: 100,
+                            text: "  ".into(),
+                        },
+                        Segment {
+                            start_ms: 100,
+                            end_ms: 200,
+                            text: "本文あり".into(),
+                        },
+                        Segment {
+                            start_ms: 200,
+                            end_ms: 300,
+                            text: "\n\t".into(),
+                        },
                     ],
                 })
             }
@@ -379,8 +379,16 @@ mod tests {
         let t = Transcript {
             language: "ja".into(),
             segments: vec![
-                Segment { start_ms: 0, end_ms: 100, text: "A".into() },
-                Segment { start_ms: 100, end_ms: 200, text: "B".into() },
+                Segment {
+                    start_ms: 0,
+                    end_ms: 100,
+                    text: "A".into(),
+                },
+                Segment {
+                    start_ms: 100,
+                    end_ms: 200,
+                    text: "B".into(),
+                },
             ],
         };
         assert_eq!(t.body(), "A\nB");

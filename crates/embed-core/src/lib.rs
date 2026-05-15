@@ -26,7 +26,10 @@ mod tests {
     #[tokio::test]
     async fn embedder_returns_dim_sized_vectors_per_input() {
         let e = ZeroEmbed(8);
-        let out = e.embed(&["a".into(), "b".into(), "c".into()]).await.unwrap();
+        let out = e
+            .embed(&["a".into(), "b".into(), "c".into()])
+            .await
+            .unwrap();
         assert_eq!(out.len(), 3);
         for v in out {
             assert_eq!(v.len(), e.dim());

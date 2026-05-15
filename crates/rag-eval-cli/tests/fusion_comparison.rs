@@ -47,7 +47,8 @@ fn locate_static_jp() -> Option<PathBuf> {
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -104,7 +105,10 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
     let per_query_k = top_k.max(6);
     let mut merged: HashMap<Uuid, SearchHit> = HashMap::new();
     for q in &queries {
-        let hits = match engine.retrieve_weighted(Some(nb), q, per_query_k, weights).await {
+        let hits = match engine
+            .retrieve_weighted(Some(nb), q, per_query_k, weights)
+            .await
+        {
             Ok(h) => h,
             Err(_) => continue,
         };
@@ -120,7 +124,11 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
         }
     }
     let mut hits: Vec<SearchHit> = merged.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     hits
 }
@@ -134,7 +142,11 @@ async fn fusion_x_rewriter_2x2() {
     let queries_n = golden.items.len();
 
     // Build engine
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -199,7 +211,8 @@ async fn fusion_x_rewriter_2x2() {
         let t0 = std::time::Instant::now();
         let mut pairs = Vec::with_capacity(golden.items.len());
         for item in &golden.items {
-            let hits = score_max_retrieve(&engine, nb, &llm_rewriter, &item.query, top_k, weights).await;
+            let hits =
+                score_max_retrieve(&engine, nb, &llm_rewriter, &item.query, top_k, weights).await;
             let predicted: Vec<String> = hits
                 .iter()
                 .filter_map(|h| id_map.get(&h.chunk.id).cloned())
@@ -210,7 +223,11 @@ async fn fusion_x_rewriter_2x2() {
         println!(
             "  {:<35} recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
             "score-max + LlmRewriter",
-            s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            t0.elapsed().as_secs_f32()
         );
     }
 
@@ -219,7 +236,8 @@ async fn fusion_x_rewriter_2x2() {
         let t0 = std::time::Instant::now();
         let mut pairs = Vec::with_capacity(golden.items.len());
         for item in &golden.items {
-            let hits = score_max_retrieve(&engine, nb, &multi_expand, &item.query, top_k, weights).await;
+            let hits =
+                score_max_retrieve(&engine, nb, &multi_expand, &item.query, top_k, weights).await;
             let predicted: Vec<String> = hits
                 .iter()
                 .filter_map(|h| id_map.get(&h.chunk.id).cloned())
@@ -230,7 +248,11 @@ async fn fusion_x_rewriter_2x2() {
         println!(
             "  {:<35} recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
             "score-max + MultiExpand (本体)",
-            s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            t0.elapsed().as_secs_f32()
         );
     }
 
@@ -240,7 +262,13 @@ async fn fusion_x_rewriter_2x2() {
         let mut pairs = Vec::with_capacity(golden.items.len());
         for item in &golden.items {
             let hits = engine
-                .retrieve_multi(Some(nb), &item.query, top_k, &llm_rewriter, multi_opts_paraphrase)
+                .retrieve_multi(
+                    Some(nb),
+                    &item.query,
+                    top_k,
+                    &llm_rewriter,
+                    multi_opts_paraphrase,
+                )
                 .await
                 .unwrap_or_default();
             let predicted: Vec<String> = hits
@@ -253,7 +281,11 @@ async fn fusion_x_rewriter_2x2() {
         println!(
             "  {:<35} recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
             "RRF + LlmRewriter",
-            s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            t0.elapsed().as_secs_f32()
         );
     }
 
@@ -276,7 +308,11 @@ async fn fusion_x_rewriter_2x2() {
         println!(
             "  {:<35} recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
             "RRF + MultiExpand",
-            s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            t0.elapsed().as_secs_f32()
         );
     }
 }

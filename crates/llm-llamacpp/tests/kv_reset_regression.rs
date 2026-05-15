@@ -27,7 +27,8 @@ use ellisii_llm_core::{LlmBackend, LlmRequest, ModelFamily};
 use ellisii_llm_llamacpp::{LlamaConfig, LlamaCppBackend};
 
 fn locate_e4b() -> Option<PathBuf> {
-    let p = std::env::var_os("HOME").map(PathBuf::from)?
+    let p = std::env::var_os("HOME")
+        .map(PathBuf::from)?
         .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf");
     if p.is_file() {
         Some(p)
@@ -36,7 +37,11 @@ fn locate_e4b() -> Option<PathBuf> {
     }
 }
 
-async fn collect(backend: &LlamaCppBackend, system: &str, user: &str) -> ellisii_core::Result<String> {
+async fn collect(
+    backend: &LlamaCppBackend,
+    system: &str,
+    user: &str,
+) -> ellisii_core::Result<String> {
     let buf: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
     let buf2 = buf.clone();
     let cb: Box<dyn FnMut(String) + Send + 'static> =
@@ -65,17 +70,33 @@ async fn independent_prompts_do_not_collide_in_kv_cache() {
 
     // 同じ system だが user が違う 2 連続呼び出し (= LlmRewriter の典型的な使い方)
     let s = "あなたは検索クエリを書き換えるアシスタントです。";
-    let r1 = collect(&backend, s, "「温泉に入ったときに課される税」を別表現で 1 つ書いてください。\n出力例:\n1. ...").await;
+    let r1 = collect(
+        &backend,
+        s,
+        "「温泉に入ったときに課される税」を別表現で 1 つ書いてください。\n出力例:\n1. ...",
+    )
+    .await;
     assert!(r1.is_ok(), "1st call failed: {:?}", r1.err());
-    assert!(!r1.as_ref().unwrap().is_empty(), "1st call produced no output");
+    assert!(
+        !r1.as_ref().unwrap().is_empty(),
+        "1st call produced no output"
+    );
 
-    let r2 = collect(&backend, s, "「市たばこ税の税率」を別表現で 1 つ書いてください。\n出力例:\n1. ...").await;
+    let r2 = collect(
+        &backend,
+        s,
+        "「市たばこ税の税率」を別表現で 1 つ書いてください。\n出力例:\n1. ...",
+    )
+    .await;
     assert!(
         r2.is_ok(),
         "2nd call failed (KV cache regression): {:?}",
         r2.err()
     );
-    assert!(!r2.as_ref().unwrap().is_empty(), "2nd call produced no output");
+    assert!(
+        !r2.as_ref().unwrap().is_empty(),
+        "2nd call produced no output"
+    );
 
     // 完全に system も user も違う 3 番目の呼び出しでも生き残る (= prefix=0 でも安全)
     let r3 = collect(

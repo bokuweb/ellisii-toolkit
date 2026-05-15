@@ -41,21 +41,45 @@ fn parse_args() -> Result<Args> {
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         match a.as_str() {
-            "--corpus" => corpus = Some(PathBuf::from(it.next().ok_or_else(|| anyhow!("--corpus needs a value"))?)),
-            "--golden" => golden = Some(PathBuf::from(it.next().ok_or_else(|| anyhow!("--golden needs a value"))?)),
-            "--k" => k = it.next().ok_or_else(|| anyhow!("--k needs a value"))?.parse()?,
+            "--corpus" => {
+                corpus = Some(PathBuf::from(
+                    it.next().ok_or_else(|| anyhow!("--corpus needs a value"))?,
+                ))
+            }
+            "--golden" => {
+                golden = Some(PathBuf::from(
+                    it.next().ok_or_else(|| anyhow!("--golden needs a value"))?,
+                ))
+            }
+            "--k" => {
+                k = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--k needs a value"))?
+                    .parse()?
+            }
             "--weights" => {
                 let raw = it.next().ok_or_else(|| anyhow!("--weights needs csv"))?;
-                weights = raw.split(',').map(|s| s.trim().parse::<f32>()).collect::<std::result::Result<_, _>>()?;
+                weights = raw
+                    .split(',')
+                    .map(|s| s.trim().parse::<f32>())
+                    .collect::<std::result::Result<_, _>>()?;
             }
             "--backend" => {
-                backend = Backend::parse(&it.next().ok_or_else(|| anyhow!("--backend needs a value"))?)?;
+                backend = Backend::parse(
+                    &it.next()
+                        .ok_or_else(|| anyhow!("--backend needs a value"))?,
+                )?;
             }
             "--embedder" => {
-                embedder_name = it.next().ok_or_else(|| anyhow!("--embedder needs a value"))?;
+                embedder_name = it
+                    .next()
+                    .ok_or_else(|| anyhow!("--embedder needs a value"))?;
             }
             "--model-dir" => {
-                model_dir = Some(PathBuf::from(it.next().ok_or_else(|| anyhow!("--model-dir needs a value"))?));
+                model_dir = Some(PathBuf::from(
+                    it.next()
+                        .ok_or_else(|| anyhow!("--model-dir needs a value"))?,
+                ));
             }
             "--judge" => {
                 judge = match it.next().as_deref() {
@@ -77,7 +101,8 @@ fn parse_args() -> Result<Args> {
     let embedder = match embedder_name.as_str() {
         "bigram" => EmbedderKind::Bigram { dim: DEFAULT_DIM },
         "static-jp" => EmbedderKind::StaticJp {
-            model_dir: model_dir.ok_or_else(|| anyhow!("--embedder static-jp requires --model-dir"))?,
+            model_dir: model_dir
+                .ok_or_else(|| anyhow!("--embedder static-jp requires --model-dir"))?,
         },
         other => bail!("unknown embedder {other:?} (expected bigram | static-jp)"),
     };

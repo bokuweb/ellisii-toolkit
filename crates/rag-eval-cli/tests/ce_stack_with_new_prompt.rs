@@ -51,7 +51,8 @@ fn locate_provence() -> Option<PathBuf> {
         }
     }
     if let Some(home) = std::env::var_os("HOME") {
-        let mac = PathBuf::from(&home).join("Library/Application Support/ellisii/models/open-provence");
+        let mac =
+            PathBuf::from(&home).join("Library/Application Support/ellisii/models/open-provence");
         if mac.is_dir() {
             return Some(mac);
         }
@@ -62,7 +63,8 @@ fn locate_provence() -> Option<PathBuf> {
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -116,7 +118,10 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
     let per_query_k = top_k.max(6);
     let mut merged: HashMap<Uuid, SearchHit> = HashMap::new();
     for q in &queries {
-        let hits = match engine.retrieve_weighted(Some(nb), q, per_query_k, weights).await {
+        let hits = match engine
+            .retrieve_weighted(Some(nb), q, per_query_k, weights)
+            .await
+        {
             Ok(h) => h,
             Err(_) => continue,
         };
@@ -132,7 +137,11 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
         }
     }
     let mut hits: Vec<SearchHit> = merged.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     hits
 }
@@ -151,12 +160,20 @@ async fn apply_ce(
         Ok(s) if s.len() == hits.len() => s,
         _ => return hits,
     };
-    let max_orig = hits.iter().map(|h| h.score.abs()).fold(0.0_f32, f32::max).max(1e-6);
+    let max_orig = hits
+        .iter()
+        .map(|h| h.score.abs())
+        .fold(0.0_f32, f32::max)
+        .max(1e-6);
     for (h, ce) in hits.iter_mut().zip(scores.iter()) {
         let norm_orig = (h.score / max_orig).clamp(0.0, 1.0);
         h.score = ce_weight * ce + (1.0 - ce_weight) * norm_orig;
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits
 }
 
@@ -169,7 +186,11 @@ async fn measure_domain(
     let (corpus, golden) = load_fixture(domain);
     let queries_n = golden.items.len();
 
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp.clone() }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp.clone(),
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -219,13 +240,20 @@ async fn measure_domain(
     let mut pairs = Vec::with_capacity(golden.items.len());
     for item in &golden.items {
         let hits = score_max_retrieve(&engine, nb, &rewriter, &item.query, top_k, weights).await;
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s_a = summarize(&pairs, top_k);
     println!(
         "  score-max + MultiExpand             {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        s_a.recall_at_k, s_a.hit_at_k, s_a.ndcg_at_k, s_a.mrr, t0.elapsed().as_secs_f32()
+        s_a.recall_at_k,
+        s_a.hit_at_k,
+        s_a.ndcg_at_k,
+        s_a.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     // (b) score-max + MultiExpand + CE rerank
@@ -235,13 +263,20 @@ async fn measure_domain(
         let hits = score_max_retrieve(&engine, nb, &rewriter, &item.query, ce_pool, weights).await;
         let mut hits = apply_ce(&provence, &item.query, hits, 0.7).await;
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s_b = summarize(&pairs, top_k);
     println!(
         "  score-max + MultiExpand + CE w=0.7  {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        s_b.recall_at_k, s_b.hit_at_k, s_b.ndcg_at_k, s_b.mrr, t0.elapsed().as_secs_f32()
+        s_b.recall_at_k,
+        s_b.hit_at_k,
+        s_b.ndcg_at_k,
+        s_b.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     // (c) score-max + MultiExpand + CE w=0.5 (PR #54 で best recall を出した w)
@@ -251,13 +286,20 @@ async fn measure_domain(
         let hits = score_max_retrieve(&engine, nb, &rewriter, &item.query, ce_pool, weights).await;
         let mut hits = apply_ce(&provence, &item.query, hits, 0.5).await;
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s_c = summarize(&pairs, top_k);
     println!(
         "  score-max + MultiExpand + CE w=0.5  {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        s_c.recall_at_k, s_c.hit_at_k, s_c.ndcg_at_k, s_c.mrr, t0.elapsed().as_secs_f32()
+        s_c.recall_at_k,
+        s_c.hit_at_k,
+        s_c.ndcg_at_k,
+        s_c.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     println!(
@@ -284,7 +326,13 @@ async fn measure_civil_law_hard_only() {
     let cfg = LlamaConfig::new(e4b, ModelFamily::Gemma4);
     let llm: Arc<dyn LlmBackend> = Arc::new(LlamaCppBackend::load(cfg).expect("load gemma"));
 
-    measure_domain("jp-civil-law-hard", &static_jp, &provence_dir, Arc::clone(&llm)).await;
+    measure_domain(
+        "jp-civil-law-hard",
+        &static_jp,
+        &provence_dir,
+        Arc::clone(&llm),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -297,5 +345,11 @@ async fn measure_cs_wiki_only() {
     let cfg = LlamaConfig::new(e4b, ModelFamily::Gemma4);
     let llm: Arc<dyn LlmBackend> = Arc::new(LlamaCppBackend::load(cfg).expect("load gemma"));
 
-    measure_domain("jp-cs-wiki-hard", &static_jp, &provence_dir, Arc::clone(&llm)).await;
+    measure_domain(
+        "jp-cs-wiki-hard",
+        &static_jp,
+        &provence_dir,
+        Arc::clone(&llm),
+    )
+    .await;
 }

@@ -61,9 +61,18 @@ async fn query_title_match_high_when_query_directly_matches_title() {
         .build()
         .unwrap();
     let cs = vec![
-        chunk_with_heading("ACID 本文 1。文字数を稼ぐためにダミー文を加える。", &["wiki", "ACID"]),
-        chunk_with_heading("B 木 本文 1。これも noise filter を通すために本文を入れる。", &["wiki", "B木"]),
-        chunk_with_heading("DNS の解説本文。同じく十分な長さを確保しておく。", &["wiki", "Domain Name System"]),
+        chunk_with_heading(
+            "ACID 本文 1。文字数を稼ぐためにダミー文を加える。",
+            &["wiki", "ACID"],
+        ),
+        chunk_with_heading(
+            "B 木 本文 1。これも noise filter を通すために本文を入れる。",
+            &["wiki", "B木"],
+        ),
+        chunk_with_heading(
+            "DNS の解説本文。同じく十分な長さを確保しておく。",
+            &["wiki", "Domain Name System"],
+        ),
     ];
     let texts: Vec<String> = cs.iter().map(|c| c.text.clone()).collect();
     let embs = e.embedder().embed(&texts).await.unwrap();
@@ -85,7 +94,10 @@ async fn query_title_match_low_for_paraphrase_queries() {
         .unwrap();
     // タイトルから完全 paraphrase したクエリ — Run 25 の jp-cs-wiki-hard 風
     let cs = vec![
-        chunk_with_heading("ACID の解説本文をここに置く。長さを確保。", &["wiki", "ACID"]),
+        chunk_with_heading(
+            "ACID の解説本文をここに置く。長さを確保。",
+            &["wiki", "ACID"],
+        ),
         chunk_with_heading("B 木 の解説本文。同じく十分な長さで。", &["wiki", "B木"]),
     ];
     let texts: Vec<String> = cs.iter().map(|c| c.text.clone()).collect();
@@ -110,19 +122,17 @@ async fn query_title_match_zero_when_heading_path_empty() {
         .with_notebook_id(nb)
         .build()
         .unwrap();
-    let cs = vec![
-        Chunk {
-            id: Uuid::new_v4(),
-            source_id: Uuid::nil(),
-            ord: 0,
-            text: "(タイトル付きチャンク)\n本文をここに入れる。十分な長さで noise filter を通す。"
-                .into(),
-            heading_path: vec![],
-            page: None,
-            bbox: None,
-            summary: None,
-        },
-    ];
+    let cs = vec![Chunk {
+        id: Uuid::new_v4(),
+        source_id: Uuid::nil(),
+        ord: 0,
+        text: "(タイトル付きチャンク)\n本文をここに入れる。十分な長さで noise filter を通す。"
+            .into(),
+        heading_path: vec![],
+        page: None,
+        bbox: None,
+        summary: None,
+    }];
     let texts: Vec<String> = cs.iter().map(|c| c.text.clone()).collect();
     let embs = e.embedder().embed(&texts).await.unwrap();
     e.store().upsert(nb, &cs, &embs).await.unwrap();

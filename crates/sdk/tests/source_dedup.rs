@@ -106,7 +106,11 @@ async fn max_chunks_per_source_one_keeps_one_per_source() {
         )
         .await
         .unwrap();
-    assert_eq!(hits.len(), 2, "dedup=1: at most 1 per source → 2 sources × 1 = 2");
+    assert_eq!(
+        hits.len(),
+        2,
+        "dedup=1: at most 1 per source → 2 sources × 1 = 2"
+    );
     // 2 つの source がそれぞれちょうど 1 件ずつ
     let mut counts: std::collections::HashMap<Uuid, usize> = std::collections::HashMap::new();
     for h in &hits {

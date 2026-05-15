@@ -47,7 +47,10 @@ async fn paraphrase_score_is_zero_for_empty_or_no_caption_corpus() {
     assert_eq!(e.corpus_paraphrase_score().await.unwrap(), 0.0);
 
     // caption が無いだけの corpus でも 0.0 (シグナル無効)
-    let cs = vec![chunk("ただの本文 1。長めに書いておく。"), chunk("ただの本文 2。")];
+    let cs = vec![
+        chunk("ただの本文 1。長めに書いておく。"),
+        chunk("ただの本文 2。"),
+    ];
     let texts: Vec<String> = cs.iter().map(|c| c.text.clone()).collect();
     let embs = e.embedder().embed(&texts).await.unwrap();
     e.store().upsert(nb, &cs, &embs).await.unwrap();
@@ -74,7 +77,11 @@ async fn paraphrase_corpus_scores_higher_than_literal_corpus() {
     ];
     let texts: Vec<String> = cs_para.iter().map(|c| c.text.clone()).collect();
     let embs = e_para.embedder().embed(&texts).await.unwrap();
-    e_para.store().upsert(nb_para, &cs_para, &embs).await.unwrap();
+    e_para
+        .store()
+        .upsert(nb_para, &cs_para, &embs)
+        .await
+        .unwrap();
     let para_score = e_para.corpus_paraphrase_score().await.unwrap();
 
     // 字面一致系: caption と body が同じ語彙

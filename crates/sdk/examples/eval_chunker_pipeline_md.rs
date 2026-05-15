@@ -166,9 +166,7 @@ fn run_chunker_for_corpus(
     (all_chunks, id_map)
 }
 
-async fn build_ellisii(
-    chunks: &[Chunk],
-) -> Arc<Ellisii> {
+async fn build_ellisii(chunks: &[Chunk]) -> Arc<Ellisii> {
     let dim = 256;
     let nb = Uuid::new_v4();
     let ellisii = Ellisii::builder()

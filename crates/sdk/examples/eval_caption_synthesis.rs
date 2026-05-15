@@ -169,14 +169,15 @@ async fn build_ellisii_for_mode(
     }
     let embedder = BigramHashEmbedder { dim };
     let embs = embedder.embed(&texts).await.expect("embed");
-    ellisii.store().upsert(nb, &chunks, &embs).await.expect("upsert");
+    ellisii
+        .store()
+        .upsert(nb, &chunks, &embs)
+        .await
+        .expect("upsert");
     (Arc::new(ellisii), id_map)
 }
 
-async fn measure(
-    name: &str,
-    synthesize: bool,
-) -> anyhow::Result<(f32, f32, f32)> {
+async fn measure(name: &str, synthesize: bool) -> anyhow::Result<(f32, f32, f32)> {
     let (corpus, golden) = load_fixture(name);
     let (ellisii, id_map) = build_ellisii_for_mode(&corpus, synthesize).await;
     let density = ellisii.caption_density().await?;
@@ -195,7 +196,9 @@ async fn measure(
             )
             .await?;
         pairs.push((
-            hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect(),
+            hits.iter()
+                .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+                .collect(),
             item.relevant.clone(),
         ));
     }

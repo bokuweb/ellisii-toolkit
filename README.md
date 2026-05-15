@@ -1,5 +1,8 @@
 # ellisii-toolkit
 
+[![CI](https://github.com/bokuweb/ellisii-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/bokuweb/ellisii-toolkit/actions/workflows/ci.yml)
+[![License: PolyForm-NC-1.0.0](https://img.shields.io/badge/license-PolyForm--NC--1.0.0-blue.svg)](./LICENSE)
+
 Reusable Rust crates for building local-first RAG / NotebookLM-style
 applications. Extracted from [ellisii](https://github.com/bokuweb/ellisii)
 so the lower-level building blocks can be consumed from other projects

@@ -129,11 +129,7 @@ pub trait VectorStore: Send + Sync {
     ///    (= 構造の薄い文書では preamble を返す)
     ///
     /// 戻り順は source ごとに連続し、各 source 内では ord 昇順。
-    async fn representative_chunks(
-        &self,
-        scope: Scope,
-        per_source: usize,
-    ) -> Result<Vec<Chunk>>;
+    async fn representative_chunks(&self, scope: Scope, per_source: usize) -> Result<Vec<Chunk>>;
 
     /// scope 内の各 source について、`topic` (= 主題語) に関連する代表 chunk を
     /// `per_source` 個ずつ返す。「民法の **物権** を要約して」のような主題付き
@@ -267,10 +263,7 @@ mod tests {
 
     #[test]
     fn pick_for_topic_empty_topic_equals_representative() {
-        let chunks = vec![
-            chunk(0, vec!["A"], "a"),
-            chunk(1, vec!["B"], "b"),
-        ];
+        let chunks = vec![chunk(0, vec!["A"], "a"), chunk(1, vec!["B"], "b")];
         let out = pick_for_topic(&chunks, 5, "");
         let reps = pick_representatives(&chunks, 5);
         assert_eq!(out.len(), reps.len());

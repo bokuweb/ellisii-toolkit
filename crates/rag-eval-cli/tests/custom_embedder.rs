@@ -56,19 +56,22 @@ async fn run_eval_accepts_custom_embedder() {
             doc_id: "alpha".into(),
             title: "".into(),
             caption: "".into(),
-            text: "アルファ・テストの説明文章。アルファは最初の文字を意味するギリシャ文字です。".into(),
+            text: "アルファ・テストの説明文章。アルファは最初の文字を意味するギリシャ文字です。"
+                .into(),
         },
         CorpusEntry {
             doc_id: "beta".into(),
             title: "".into(),
             caption: "".into(),
-            text: "ベータ・テストの説明文章。ベータは二番目の文字を意味するギリシャ文字です。".into(),
+            text: "ベータ・テストの説明文章。ベータは二番目の文字を意味するギリシャ文字です。"
+                .into(),
         },
         CorpusEntry {
             doc_id: "gamma".into(),
             title: "".into(),
             caption: "".into(),
-            text: "ガンマ・テストの説明文章。ガンマは三番目の文字を意味するギリシャ文字です。".into(),
+            text: "ガンマ・テストの説明文章。ガンマは三番目の文字を意味するギリシャ文字です。"
+                .into(),
         },
     ];
     let golden = GoldenSet {
@@ -108,5 +111,9 @@ async fn run_eval_accepts_custom_embedder() {
     let s = &rows[0].summary;
     assert_eq!(s.queries, 3);
     // 文字共有による単純な vector でも 3/3 ヒットするはず。
-    assert!(s.hit_at_k >= 1.0, "expected hit@3=1.0 with one-hot char embedder, got {}", s.hit_at_k);
+    assert!(
+        s.hit_at_k >= 1.0,
+        "expected hit@3=1.0 with one-hot char embedder, got {}",
+        s.hit_at_k
+    );
 }

@@ -34,10 +34,7 @@ fn format_gemma4(req: &LlmRequest) -> FormattedPrompt {
                     first_user = false;
                     turn.content.clone()
                 };
-                text.push_str(&format!(
-                    "<start_of_turn>user\n{}<end_of_turn>\n",
-                    body
-                ));
+                text.push_str(&format!("<start_of_turn>user\n{}<end_of_turn>\n", body));
             }
             ChatRole::Assistant => {
                 text.push_str(&format!(
@@ -132,8 +129,12 @@ mod tests {
         );
         // 1 ターン目に system が入る
         assert!(p.text.contains("be terse\n\n前の質問"));
-        assert!(p.text.contains("<start_of_turn>model\n前の回答<end_of_turn>"));
-        assert!(p.text.ends_with("<start_of_turn>user\n新しい質問<end_of_turn>\n<start_of_turn>model\n"));
+        assert!(p
+            .text
+            .contains("<start_of_turn>model\n前の回答<end_of_turn>"));
+        assert!(p
+            .text
+            .ends_with("<start_of_turn>user\n新しい質問<end_of_turn>\n<start_of_turn>model\n"));
     }
 
     #[test]
@@ -142,17 +143,16 @@ mod tests {
             ModelFamily::Qwen,
             &req_with_history(
                 "be terse",
-                vec![
-                    (ChatRole::User, "Q1"),
-                    (ChatRole::Assistant, "A1"),
-                ],
+                vec![(ChatRole::User, "Q1"), (ChatRole::Assistant, "A1")],
                 "Q2",
             ),
         );
         assert!(p.text.contains("<|im_start|>system\nbe terse<|im_end|>"));
         assert!(p.text.contains("<|im_start|>user\nQ1<|im_end|>"));
         assert!(p.text.contains("<|im_start|>assistant\nA1<|im_end|>"));
-        assert!(p.text.ends_with("<|im_start|>user\nQ2<|im_end|>\n<|im_start|>assistant\n"));
+        assert!(p
+            .text
+            .ends_with("<|im_start|>user\nQ2<|im_end|>\n<|im_start|>assistant\n"));
     }
 
     #[test]

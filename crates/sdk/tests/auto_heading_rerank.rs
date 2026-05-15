@@ -113,11 +113,20 @@ async fn auto_no_op_when_density_low() {
         auto_heading_rerank: auto,
         ..Default::default()
     };
-    let hits_off = ellisii.search("MySQL レプリケーション", mk(false)).await.unwrap();
-    let hits_auto = ellisii.search("MySQL レプリケーション", mk(true)).await.unwrap();
+    let hits_off = ellisii
+        .search("MySQL レプリケーション", mk(false))
+        .await
+        .unwrap();
+    let hits_auto = ellisii
+        .search("MySQL レプリケーション", mk(true))
+        .await
+        .unwrap();
     let ids_off: Vec<Uuid> = hits_off.iter().map(|h| h.chunk.id).collect();
     let ids_auto: Vec<Uuid> = hits_auto.iter().map(|h| h.chunk.id).collect();
-    assert_eq!(ids_off, ids_auto, "auto should not change ranking at density=0");
+    assert_eq!(
+        ids_off, ids_auto,
+        "auto should not change ranking at density=0"
+    );
     for (a, b) in hits_off.iter().zip(hits_auto.iter()) {
         assert!(
             (a.score - b.score).abs() < 1e-6,

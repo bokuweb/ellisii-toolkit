@@ -166,9 +166,14 @@ pub fn parse_expand_output(raw: &str, original: &str) -> Vec<String> {
             let s: String = rest
                 .trim()
                 .trim_matches(|c: char| {
-                    matches!(c, '"' | '「' | '」' | '『' | '』' | '\'' | '-' | '*' | '#' | '・')
+                    matches!(
+                        c,
+                        '"' | '「' | '」' | '『' | '』' | '\'' | '-' | '*' | '#' | '・'
+                    )
                 })
-                .trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ')' || c == '．')
+                .trim_start_matches(|c: char| {
+                    c.is_ascii_digit() || c == '.' || c == ')' || c == '．'
+                })
                 .trim()
                 .chars()
                 .take(80)
@@ -283,7 +288,10 @@ mod tests {
         let llm = ScriptedLlm {
             out: "PARAPHRASE: 拡張結果".into(),
         };
-        let r = MultiExpandRewriter::new(llm).rewrite("猫", 99).await.unwrap();
+        let r = MultiExpandRewriter::new(llm)
+            .rewrite("猫", 99)
+            .await
+            .unwrap();
         assert_eq!(r, RewrittenQueries::just("猫"));
     }
 }

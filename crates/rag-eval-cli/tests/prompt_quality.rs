@@ -43,7 +43,8 @@ fn locate_static_jp() -> Option<PathBuf> {
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -97,7 +98,10 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
     let per_query_k = top_k.max(6);
     let mut merged: HashMap<Uuid, SearchHit> = HashMap::new();
     for q in &queries {
-        let hits = match engine.retrieve_weighted(Some(nb), q, per_query_k, weights).await {
+        let hits = match engine
+            .retrieve_weighted(Some(nb), q, per_query_k, weights)
+            .await
+        {
             Ok(h) => h,
             Err(_) => continue,
         };
@@ -113,7 +117,11 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
         }
     }
     let mut hits: Vec<SearchHit> = merged.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     hits
 }
@@ -122,7 +130,11 @@ async fn measure(domain: &str, static_jp: &PathBuf, llm: Arc<dyn LlmBackend>) {
     let (corpus, golden) = load_fixture(domain);
     let queries_n = golden.items.len();
 
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp.clone() }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp.clone(),
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -170,7 +182,10 @@ async fn measure(domain: &str, static_jp: &PathBuf, llm: Arc<dyn LlmBackend>) {
             .retrieve_weighted(Some(nb), &item.query, top_k, weights)
             .await
             .unwrap();
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s_base = summarize(&pairs, top_k);
@@ -181,7 +196,10 @@ async fn measure(domain: &str, static_jp: &PathBuf, llm: Arc<dyn LlmBackend>) {
     let mut pairs = Vec::with_capacity(golden.items.len());
     for item in &golden.items {
         let hits = score_max_retrieve(&engine, nb, &rewriter, &item.query, top_k, weights).await;
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s_multi = summarize(&pairs, top_k);
@@ -190,11 +208,19 @@ async fn measure(domain: &str, static_jp: &PathBuf, llm: Arc<dyn LlmBackend>) {
     println!("\n=== {domain} (k={top_k}, queries={queries_n}) ===");
     println!(
         "  baseline (no rewriter)         recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        s_base.recall_at_k, s_base.hit_at_k, s_base.ndcg_at_k, s_base.mrr, dt_base.as_secs_f32()
+        s_base.recall_at_k,
+        s_base.hit_at_k,
+        s_base.ndcg_at_k,
+        s_base.mrr,
+        dt_base.as_secs_f32()
     );
     println!(
         "  score-max + MultiExpand (本命) recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        s_multi.recall_at_k, s_multi.hit_at_k, s_multi.ndcg_at_k, s_multi.mrr, dt_multi.as_secs_f32()
+        s_multi.recall_at_k,
+        s_multi.hit_at_k,
+        s_multi.ndcg_at_k,
+        s_multi.mrr,
+        dt_multi.as_secs_f32()
     );
     println!(
         "  Δ (multi - baseline)            recall={:+.3}  hit={:+.3}  nDCG={:+.3}  MRR={:+.3}",

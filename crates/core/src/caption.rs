@@ -83,7 +83,11 @@ pub fn extract_article_body_lead(text: &str) -> Option<&str> {
                 break;
             }
         }
-        if end_b == 0 { after_jou } else { &rest[end_b..] }
+        if end_b == 0 {
+            after_jou
+        } else {
+            &rest[end_b..]
+        }
     } else {
         after_jou
     };
@@ -112,16 +116,30 @@ pub fn extract_article_body_lead(text: &str) -> Option<&str> {
 fn is_jp_numeral(c: char) -> bool {
     matches!(
         c,
-        '０'..='９' | '〇' | '一' | '二' | '三' | '四' | '五' | '六' |
-        '七' | '八' | '九' | '十' | '百' | '千' | '万' | '・'
+        '０'
+            ..='９'
+                | '〇'
+                | '一'
+                | '二'
+                | '三'
+                | '四'
+                | '五'
+                | '六'
+                | '七'
+                | '八'
+                | '九'
+                | '十'
+                | '百'
+                | '千'
+                | '万'
+                | '・'
     )
 }
 
 fn is_jp_numeral_basic(c: char) -> bool {
     matches!(
         c,
-        '０'..='９' | '〇' | '一' | '二' | '三' | '四' | '五' | '六' |
-        '七' | '八' | '九' | '十'
+        '０'..='９' | '〇' | '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九' | '十'
     )
 }
 
@@ -209,8 +227,14 @@ mod tests {
 
     #[test]
     fn extract_caption_basic() {
-        assert_eq!(extract_caption("(入湯税の税率)\n\n第123条 ..."), Some("入湯税の税率"));
-        assert_eq!(extract_caption("  \n  (たばこ税の税率) 第85条"), Some("たばこ税の税率"));
+        assert_eq!(
+            extract_caption("(入湯税の税率)\n\n第123条 ..."),
+            Some("入湯税の税率")
+        );
+        assert_eq!(
+            extract_caption("  \n  (たばこ税の税率) 第85条"),
+            Some("たばこ税の税率")
+        );
     }
 
     #[test]
@@ -240,7 +264,8 @@ mod tests {
     #[test]
     fn extract_defined_terms_picks_quoted_term_before_toiu() {
         // 条文での典型: (以下本節において「X」という。)
-        let t = "第129条 事業所税は…事務所又は事業所 (以下本節において「事業所等」という。) において…";
+        let t =
+            "第129条 事業所税は…事務所又は事業所 (以下本節において「事業所等」という。) において…";
         let terms = extract_defined_terms(t);
         assert_eq!(terms, vec!["事業所等"]);
     }

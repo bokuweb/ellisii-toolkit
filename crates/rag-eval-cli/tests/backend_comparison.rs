@@ -44,8 +44,7 @@ fn corpus() -> Vec<CorpusEntry> {
             doc_id: "minpou-96".into(),
             title: "第九十六条".into(),
             caption: "詐欺又は強迫".into(),
-            text: "詐欺又は強迫による意思表示は、取り消すことができる。"
-                .into(),
+            text: "詐欺又は強迫による意思表示は、取り消すことができる。".into(),
         },
         CorpusEntry {
             doc_id: "noise-1".into(),

@@ -61,7 +61,11 @@ impl Embedder for DynEmb {
 async fn diagnose_failures() {
     let static_jp = locate_static_jp().expect("static-jp model not present");
     let (corpus, golden) = load_fixture("jp-civil-law-hard");
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
 
     // Build store
@@ -117,12 +121,23 @@ async fn diagnose_failures() {
             Some(r) => {
                 rank_distribution.push(r + 1);
                 if r >= 3 {
-                    println!("  [rank {}] {} (want {}) → {:?}", r + 1, item.query, want, &predicted[..5.min(predicted.len())]);
+                    println!(
+                        "  [rank {}] {} (want {}) → {:?}",
+                        r + 1,
+                        item.query,
+                        want,
+                        &predicted[..5.min(predicted.len())]
+                    );
                 }
             }
             None => {
                 failures += 1;
-                println!("  [MISS]  {} (want {}) → {:?}", item.query, want, &predicted[..5.min(predicted.len())]);
+                println!(
+                    "  [MISS]  {} (want {}) → {:?}",
+                    item.query,
+                    want,
+                    &predicted[..5.min(predicted.len())]
+                );
             }
         }
     }

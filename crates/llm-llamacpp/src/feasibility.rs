@@ -114,7 +114,10 @@ pub fn estimate(spec: &ModelSpec, host: &HostInfo, n_ctx: u32, kv_type: &str) ->
     // Decode Error -3 (= KV slot/alloc 失敗) を踏むケースがあったため
     // 1.5 GB に引き上げて安全側に倒す。
     let overhead_mb: u32 = 1536;
-    let projected_total_mb = spec.size_mb.saturating_add(kv_mb).saturating_add(overhead_mb);
+    let projected_total_mb = spec
+        .size_mb
+        .saturating_add(kv_mb)
+        .saturating_add(overhead_mb);
 
     // OS + 他アプリ向けの予約。runtime auto-tuner と揃える (4 GiB)。
     // 3 GiB だとブラウザ + IDE 等が動いている実機で残りを使い切り、
@@ -126,8 +129,14 @@ pub fn estimate(spec: &ModelSpec, host: &HostInfo, n_ctx: u32, kv_type: &str) ->
             let avail = host.total_ram_mb.saturating_sub(reserve_mb);
             notes.push(format!(
                 "{} mode: RAM {} MB - OS reserve {} MB = {} MB available",
-                if matches!(host.mode, RuntimeMode::Unified) { "Unified" } else { "CPU" },
-                host.total_ram_mb, reserve_mb, avail
+                if matches!(host.mode, RuntimeMode::Unified) {
+                    "Unified"
+                } else {
+                    "CPU"
+                },
+                host.total_ram_mb,
+                reserve_mb,
+                avail
             ));
             avail
         }

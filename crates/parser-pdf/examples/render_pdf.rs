@@ -41,11 +41,7 @@ fn parse_args() -> Result<Args, String> {
     let mut iter = std::env::args().skip(1);
     while let Some(a) = iter.next() {
         match a.as_str() {
-            "--pdf" => {
-                pdf = Some(PathBuf::from(
-                    iter.next().ok_or("--pdf needs a value")?,
-                ))
-            }
+            "--pdf" => pdf = Some(PathBuf::from(iter.next().ok_or("--pdf needs a value")?)),
             "--pages" => {
                 pages = iter
                     .next()
@@ -60,11 +56,7 @@ fn parse_args() -> Result<Args, String> {
                     .parse()
                     .map_err(|e| format!("--start: {e}"))?
             }
-            "--out" => {
-                out = Some(PathBuf::from(
-                    iter.next().ok_or("--out needs a value")?,
-                ))
-            }
+            "--out" => out = Some(PathBuf::from(iter.next().ok_or("--out needs a value")?)),
             "--dpi" => {
                 dpi = iter
                     .next()
@@ -80,7 +72,13 @@ fn parse_args() -> Result<Args, String> {
     if pages == 0 || start == 0 {
         return Err("--pages and --start must be >= 1".into());
     }
-    Ok(Args { pdf, pages, start, out, dpi })
+    Ok(Args {
+        pdf,
+        pages,
+        start,
+        out,
+        dpi,
+    })
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -90,7 +88,9 @@ async fn main() -> ExitCode {
         Err(e) => {
             eprintln!("error: {e}");
             eprintln!();
-            eprintln!("usage: render_pdf --pdf <path> --pages <N> --out <dir> [--start 1] [--dpi 1500]");
+            eprintln!(
+                "usage: render_pdf --pdf <path> --pages <N> --out <dir> [--start 1] [--dpi 1500]"
+            );
             return ExitCode::from(2);
         }
     };
@@ -99,7 +99,9 @@ async fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
-    let rast = PdfiumRasterizer { target_longest_side_px: args.dpi };
+    let rast = PdfiumRasterizer {
+        target_longest_side_px: args.dpi,
+    };
     let pdf_str = args.pdf.to_string_lossy().to_string();
     // 先に総ページ数を確認して範囲外 page を弾く (rasterize_pages は warn で
     // skip するが、CLI として明示的なエラーにしておくと bench script の

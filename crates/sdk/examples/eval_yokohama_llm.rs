@@ -84,7 +84,9 @@ async fn run() -> anyhow::Result<()> {
     let Some(gguf) = gemma_e4b() else {
         anyhow::bail!(
             "gemma-4-E4B-it-IQ4_XS.gguf が見つかりません: {}",
-            home().join("Library/Application Support/ellisii/models/").display()
+            home()
+                .join("Library/Application Support/ellisii/models/")
+                .display()
         );
     };
 

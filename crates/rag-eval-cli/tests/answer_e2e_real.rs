@@ -54,7 +54,8 @@ fn locate_static_jp() -> Option<PathBuf> {
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -108,7 +109,10 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
     let per_query_k = top_k.max(6);
     let mut merged: HashMap<Uuid, SearchHit> = HashMap::new();
     for q in &queries {
-        let hits = match engine.retrieve_weighted(Some(nb), q, per_query_k, weights).await {
+        let hits = match engine
+            .retrieve_weighted(Some(nb), q, per_query_k, weights)
+            .await
+        {
             Ok(h) => h,
             Err(_) => continue,
         };
@@ -124,7 +128,11 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
         }
     }
     let mut hits: Vec<SearchHit> = merged.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     hits
 }
@@ -176,7 +184,11 @@ async fn measure_e2e_civil_law_hard() {
     let (corpus, golden) = load_fixture("jp-civil-law-hard");
     let queries_n = golden.items.len();
 
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -217,7 +229,7 @@ async fn measure_e2e_civil_law_hard() {
     let rewriter = MultiExpandRewriter::new(SharedLlm(Arc::clone(&llm)));
     let judge = TokenOverlapJudge::default();
 
-    let top_k = 6usize;  // src-tauri の RagEngine::answer と同じ
+    let top_k = 6usize; // src-tauri の RagEngine::answer と同じ
     let weights = HybridWeights { semantic: 0.75 };
 
     println!("\n=== E2E answer quality (jp-civil-law-hard, k={top_k}, queries={queries_n}) ===");
@@ -232,7 +244,10 @@ async fn measure_e2e_civil_law_hard() {
             .retrieve_weighted(Some(nb), &item.query, top_k, weights)
             .await
             .unwrap();
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         retrieve_pairs.push((predicted, item.relevant.clone()));
         let contexts: Vec<String> = hits.iter().map(|h| h.chunk.text.clone()).collect();
         let answer = generate_answer(&*llm, &item.query, &contexts).await;
@@ -260,7 +275,10 @@ async fn measure_e2e_civil_law_hard() {
     let mut faith_scores = Vec::with_capacity(golden.items.len());
     for item in &golden.items {
         let hits = score_max_retrieve(&engine, nb, &rewriter, &item.query, top_k, weights).await;
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         retrieve_pairs.push((predicted, item.relevant.clone()));
         let contexts: Vec<String> = hits.iter().map(|h| h.chunk.text.clone()).collect();
         let answer = generate_answer(&*llm, &item.query, &contexts).await;

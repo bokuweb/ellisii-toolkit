@@ -19,7 +19,8 @@ use std::sync::Arc;
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -45,7 +46,10 @@ async fn inspect_rewriter_outputs_for_misses() {
     let rewriter = MultiExpandRewriter::new(SharedLlm(Arc::clone(&llm)));
 
     let queries = &[
-        ("知人と相談して、税逃れのために売買契約書だけ作った場合の効力", "通謀虚偽表示 (minpou-94)"),
+        (
+            "知人と相談して、税逃れのために売買契約書だけ作った場合の効力",
+            "通謀虚偽表示 (minpou-94)",
+        ),
         ("畑で取れた野菜は誰のものか", "天然果実 (minpou-88)"),
         // sanity check: should already work (regression check)
         ("脅されて結ばされた契約はどう扱われるか", "強迫 (minpou-96)"),

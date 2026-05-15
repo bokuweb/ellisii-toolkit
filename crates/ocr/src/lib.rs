@@ -42,11 +42,7 @@ pub trait PdfRasterizer: Send + Sync {
 
     /// `pages` で指定したページ (1-indexed) だけを画像化する。
     /// 空スライスを渡したら空 Vec を返す (render を一切走らせない)。
-    async fn rasterize_pages(
-        &self,
-        path: &str,
-        pages: &[u32],
-    ) -> Result<Vec<RasterizedPage>>;
+    async fn rasterize_pages(&self, path: &str, pages: &[u32]) -> Result<Vec<RasterizedPage>>;
 
     /// `rasterize_pages` のストリーミング版: 1 ページ rasterize する都度 `tx`
     /// に送信する。`tx` 受信側 (= OCR ワーカー) が並列で消費すれば、rasterize

@@ -35,12 +35,12 @@ use ellisii_jp_tokenizer_bigram::CharBigramTokenizer;
 use ellisii_jp_tokenizer_core::JpTokenizer;
 use ellisii_llm_core::{LlmBackend, LlmRequest};
 use ellisii_parsers_core::detect_kind;
+use ellisii_provence_core::ContextCompressor;
+use ellisii_query_rewriter_core::{QueryRewriter, RewrittenQueries};
 use ellisii_rag::intent_classifier::{
     CachingClassifier, Intent, IntentClassifier, LlmIntentClassifier,
 };
 use ellisii_rag::HybridWeights;
-use ellisii_provence_core::ContextCompressor;
-use ellisii_query_rewriter_core::{QueryRewriter, RewrittenQueries};
 use ellisii_store_core::{Scope, VectorStore};
 use ellisii_store_memory::InMemoryStore;
 use ellisii_store_sqlite::SqliteStore;
@@ -144,7 +144,8 @@ impl EllisiiBuilder {
     /// `dim` は埋め込み次元 (embedder と一致させる)。
     pub fn with_store_sqlite<P: AsRef<Path>>(mut self, db_path: P, dim: usize) -> Result<Self> {
         let tokenizer: Arc<dyn JpTokenizer> = Arc::new(CharBigramTokenizer::new());
-        let store = SqliteStore::open_with_tokenizer(db_path.as_ref().to_path_buf(), dim, tokenizer)?;
+        let store =
+            SqliteStore::open_with_tokenizer(db_path.as_ref().to_path_buf(), dim, tokenizer)?;
         self.store = Some(Arc::new(store));
         Ok(self)
     }
@@ -260,8 +261,10 @@ impl EllisiiBuilder {
 
         // Ingestor は generic 型なので、Arc<dyn> を内側で保持できる薄い wrapper
         // を作って渡す (src-tauri の DynEmbedder / DynStore と同じパターン)。
-        let mut ingestor =
-            Ingestor::new(Arc::new(DynEmbedder(embedder.clone())), Arc::new(DynStore(store.clone())));
+        let mut ingestor = Ingestor::new(
+            Arc::new(DynEmbedder(embedder.clone())),
+            Arc::new(DynStore(store.clone())),
+        );
         if let Some(c) = self.chunker.clone() {
             ingestor = ingestor.with_chunker(c);
         }
@@ -324,12 +327,7 @@ impl VectorStore for DynStore {
     ) -> Result<()> {
         self.0.upsert(notebook_id, chunks, embeddings).await
     }
-    async fn search(
-        &self,
-        scope: Scope,
-        query: &[f32],
-        top_k: usize,
-    ) -> Result<Vec<SearchHit>> {
+    async fn search(&self, scope: Scope, query: &[f32], top_k: usize) -> Result<Vec<SearchHit>> {
         self.0.search(scope, query, top_k).await
     }
     async fn keyword_search(
@@ -360,11 +358,7 @@ impl VectorStore for DynStore {
     ) -> Result<Vec<(u32, String)>> {
         self.0.neighbor_chunks(source_id, ord_center, window).await
     }
-    async fn representative_chunks(
-        &self,
-        scope: Scope,
-        per_source: usize,
-    ) -> Result<Vec<Chunk>> {
+    async fn representative_chunks(&self, scope: Scope, per_source: usize) -> Result<Vec<Chunk>> {
         self.0.representative_chunks(scope, per_source).await
     }
     async fn representative_chunks_for_topic(
@@ -413,12 +407,25 @@ impl Default for IndexOptions {
 /// `index_dir` 中の各ファイル状態通知。
 #[derive(Debug, Clone)]
 pub enum IndexEvent {
-    Started { path: PathBuf },
-    Ingested { path: PathBuf, chunks: usize },
+    Started {
+        path: PathBuf,
+    },
+    Ingested {
+        path: PathBuf,
+        chunks: usize,
+    },
     /// IndexCache が有効で、指紋一致 = ファイル未変更で再 ingest を skip した。
-    Unchanged { path: PathBuf },
-    Skipped { path: PathBuf, reason: String },
-    Failed { path: PathBuf, error: String },
+    Unchanged {
+        path: PathBuf,
+    },
+    Skipped {
+        path: PathBuf,
+        reason: String,
+    },
+    Failed {
+        path: PathBuf,
+        error: String,
+    },
 }
 
 /// [`Ellisii::index_file`] の結果。冪等キャッシュ有効時は `Unchanged` も返り得る。
@@ -809,9 +816,9 @@ impl Ellisii {
 
     /// index_file の内部実装。冪等処理を担当。
     async fn ingest_with_cache(&self, path: &Path) -> Result<IngestPathOutcome> {
-        let path_str = path.to_str().ok_or_else(|| {
-            Error::Other(anyhow::anyhow!("non-utf8 path: {}", path.display()))
-        })?;
+        let path_str = path
+            .to_str()
+            .ok_or_else(|| Error::Other(anyhow::anyhow!("non-utf8 path: {}", path.display())))?;
         let cache_key = path_str.to_string();
         let fp = fingerprint(path);
 
@@ -876,7 +883,8 @@ impl Ellisii {
         let mut report = IndexReport::default();
         // 進捗コールバックを Arc にして全 task で共有 (buffer_unordered 内で
         // 複数 future に move したいため)。
-        let on_progress: Option<Arc<dyn Fn(IndexEvent) + Send + Sync>> = opts.on_progress.map(Arc::from);
+        let on_progress: Option<Arc<dyn Fn(IndexEvent) + Send + Sync>> =
+            opts.on_progress.map(Arc::from);
         let emit = |ev: IndexEvent| {
             if let Some(cb) = &on_progress {
                 cb(ev);
@@ -955,11 +963,7 @@ impl Ellisii {
 
     /// 1 ファイルを ingest しつつ Started / Ingested / Unchanged / Failed の
     /// IndexEvent を進捗コールバックに流す。`index_dir` が同時並行で呼ぶ。
-    async fn ingest_with_progress<F: Fn(IndexEvent)>(
-        &self,
-        path: &Path,
-        emit: F,
-    ) -> FileOutcome {
+    async fn ingest_with_progress<F: Fn(IndexEvent)>(&self, path: &Path, emit: F) -> FileOutcome {
         emit(IndexEvent::Started {
             path: path.to_path_buf(),
         });
@@ -990,11 +994,7 @@ impl Ellisii {
     }
 
     /// 類似検索 + キーワード検索を統合した hybrid retrieval。LLM は呼ばない。
-    pub async fn search(
-        &self,
-        query: &str,
-        opts: SearchOptions,
-    ) -> Result<Vec<SearchHit>> {
+    pub async fn search(&self, query: &str, opts: SearchOptions) -> Result<Vec<SearchHit>> {
         let base = opts.semantic_weight.clamp(0.0, 1.0);
         let semantic = if opts.auto_adjust_weight {
             ellisii_rag::adjust_hybrid_weight_for_query(base, query)
@@ -1046,9 +1046,17 @@ impl Ellisii {
         let ce_should_run = opts.ce_rerank_top_n > 0
             && !(opts.skip_ce_when_rewriting && effective_max_variants > 0);
         if ce_should_run {
-            self.apply_ce_rerank(query, &mut fused, opts.ce_rerank_top_n, opts.ce_rerank_weight)
-                .await;
-        } else if opts.ce_rerank_top_n > 0 && opts.skip_ce_when_rewriting && effective_max_variants > 0 {
+            self.apply_ce_rerank(
+                query,
+                &mut fused,
+                opts.ce_rerank_top_n,
+                opts.ce_rerank_weight,
+            )
+            .await;
+        } else if opts.ce_rerank_top_n > 0
+            && opts.skip_ce_when_rewriting
+            && effective_max_variants > 0
+        {
             tracing::debug!(
                 "skipping CE rerank: rewriter active (variants={}) — see recall-evals Run 16",
                 effective_max_variants
@@ -1062,18 +1070,14 @@ impl Ellisii {
         let effective_max_per_source = if opts.max_chunks_per_source > 0 {
             opts.max_chunks_per_source
         } else if opts.auto_max_chunks_per_source
-            && self.source_count().await.unwrap_or(0)
-                >= Self::SOURCE_DEDUP_AUTO_THRESHOLD
+            && self.source_count().await.unwrap_or(0) >= Self::SOURCE_DEDUP_AUTO_THRESHOLD
         {
             1
         } else {
             0
         };
         if effective_max_per_source > 0 {
-            ellisii_rag::rerank::dedup_by_source_in_place(
-                &mut fused,
-                effective_max_per_source,
-            );
+            ellisii_rag::rerank::dedup_by_source_in_place(&mut fused, effective_max_per_source);
         }
         fused.truncate(opts.top_k);
         Ok(fused)
@@ -1112,7 +1116,10 @@ impl Ellisii {
         };
 
         if variant_caption_filter_threshold > 0.0 && queries.len() > 1 {
-            let captions = self.captions().await.unwrap_or_else(|_| Arc::new(Vec::new()));
+            let captions = self
+                .captions()
+                .await
+                .unwrap_or_else(|_| Arc::new(Vec::new()));
             if !captions.is_empty() {
                 let before = queries.len();
                 let original = queries[0].clone();
@@ -1157,11 +1164,7 @@ impl Ellisii {
     /// チャンク以外も等しく持ち上がってしまうため)。
     /// store の `all_captions` / `all_headings` が空 (default 実装) の場合は
     /// pool 内 boost だけが効く。
-    async fn apply_caption_rerank(
-        &self,
-        query: &str,
-        pool: &mut Vec<SearchHit>,
-    ) -> Result<()> {
+    async fn apply_caption_rerank(&self, query: &str, pool: &mut Vec<SearchHit>) -> Result<()> {
         // caption の IDF 表 (= 文書間で頻出する caption を減衰させる重み) を
         // captions と一緒に確保する。corpus に caption が無いか単一しか無い場合は
         // 空 hashmap で fall through (caption_*_with_idf は idf 未登録 caption に
@@ -1181,10 +1184,15 @@ impl Ellisii {
                 self.inject_from_index(query, pool, &headings, 8, 0.6, &empty)
                     .await?;
             }
-            pool.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+            pool.sort_by(|a, b| {
+                b.score
+                    .partial_cmp(&a.score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             return Ok(());
         }
-        self.inject_from_index(query, pool, &captions, 8, 1.5, &*idf).await?;
+        self.inject_from_index(query, pool, &captions, 8, 1.5, &*idf)
+            .await?;
 
         // 3) defined-terms index (Run 42): body 中の `「X」という。` 系定義語を
         //    使って pool 外から chunk を inject。caption が短く query 中心語と
@@ -1197,7 +1205,11 @@ impl Ellisii {
                 .await?;
         }
 
-        pool.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        pool.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(())
     }
 
@@ -1214,7 +1226,12 @@ impl Ellisii {
         idf: &std::collections::HashMap<String, f32>,
     ) -> Result<()> {
         let scored = ellisii_rag::rerank::apply_caption_index_with_idf(
-            query, pool, index, top_n, bonus_alpha, idf,
+            query,
+            pool,
+            index,
+            top_n,
+            bonus_alpha,
+            idf,
         );
         let in_pool: std::collections::HashSet<Uuid> = pool.iter().map(|h| h.chunk.id).collect();
         let missing_ids: Vec<Uuid> = scored
@@ -1281,7 +1298,11 @@ impl Ellisii {
         }
         // top_n の中だけソート (top_n 以下の順序は触らない)。
         let head = &mut pool[..n];
-        head.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        head.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
     }
 
     /// corpus の caption (`(...)` 見出し) を最大 `max` 件サンプルして返す。
@@ -1320,9 +1341,7 @@ impl Ellisii {
 
     /// caption の TF-IDF 重み表を lazy に作る。caption_cache と一緒に用意され、
     /// `invalidate_caption_cache` で同時に破棄される。
-    async fn caption_idf(
-        &self,
-    ) -> Result<Arc<std::collections::HashMap<String, f32>>> {
+    async fn caption_idf(&self) -> Result<Arc<std::collections::HashMap<String, f32>>> {
         {
             let lock = self.caption_idf_cache.lock().expect("poisoned");
             if let Some(c) = lock.as_ref() {
@@ -1411,7 +1430,10 @@ impl Ellisii {
     /// - `0.0` or 近い値: そもそも caption rerank が無効化されている。`SearchOptions::caption_rerank`
     ///   を `false` にしてレイテンシを節約してよい。
     pub async fn caption_density(&self) -> Result<f32> {
-        let total = self.store.count_chunks_in_scope(Some(self.notebook_id)).await?;
+        let total = self
+            .store
+            .count_chunks_in_scope(Some(self.notebook_id))
+            .await?;
         if total == 0 {
             return Ok(0.0);
         }
@@ -1444,19 +1466,25 @@ impl Ellisii {
     ///
     /// 結果は内部キャッシュしないので、ingest 直後に 1 度呼んで保存することを推奨。
     pub async fn heading_density(&self) -> Result<f32> {
-        if let Some(v) = self.heading_density_cache.lock().expect("poisoned").as_ref() {
+        if let Some(v) = self
+            .heading_density_cache
+            .lock()
+            .expect("poisoned")
+            .as_ref()
+        {
             return Ok(*v);
         }
-        let total = self.store.count_chunks_in_scope(Some(self.notebook_id)).await?;
+        let total = self
+            .store
+            .count_chunks_in_scope(Some(self.notebook_id))
+            .await?;
         let value = if total == 0 {
             0.0
         } else {
             let headings = self.store.all_headings(Some(self.notebook_id)).await?;
             let rich = headings
                 .iter()
-                .filter(|(_, h)| {
-                    h.chars().count() >= 8 && h.chars().any(|c| !c.is_ascii())
-                })
+                .filter(|(_, h)| h.chars().count() >= 8 && h.chars().any(|c| !c.is_ascii()))
                 .count();
             rich as f32 / total as f32
         };
@@ -1558,10 +1586,7 @@ impl Ellisii {
     ///
     /// 実装: `all_captions` の対応 chunk 上限 256 件をサンプルして bodies として渡す。
     /// caption 無し corpus では 0.0 を返す (シグナル無効)。
-    pub async fn query_body_literal_match<S: AsRef<str>>(
-        &self,
-        queries: &[S],
-    ) -> Result<f32> {
+    pub async fn query_body_literal_match<S: AsRef<str>>(&self, queries: &[S]) -> Result<f32> {
         if queries.is_empty() {
             return Ok(0.0);
         }
@@ -1645,12 +1670,7 @@ impl Ellisii {
     ///
     /// `opts.route_by_intent = true` (既定) かつ classifier が構築済みのときは、
     /// クエリの意図に応じて retrieval 戦略を切り替える ([`AskOptions`] 参照)。
-    pub async fn ask<F>(
-        &self,
-        query: &str,
-        opts: AskOptions,
-        on_token: F,
-    ) -> Result<Vec<SearchHit>>
+    pub async fn ask<F>(&self, query: &str, opts: AskOptions, on_token: F) -> Result<Vec<SearchHit>>
     where
         F: FnMut(String) + Send + 'static,
     {
@@ -1776,8 +1796,7 @@ impl Ellisii {
                 let effective_max_per_source = if opts.max_chunks_per_source > 0 {
                     opts.max_chunks_per_source
                 } else if opts.auto_max_chunks_per_source
-                    && self.source_count().await.unwrap_or(0)
-                        >= Self::SOURCE_DEDUP_AUTO_THRESHOLD
+                    && self.source_count().await.unwrap_or(0) >= Self::SOURCE_DEDUP_AUTO_THRESHOLD
                 {
                     1
                 } else {
@@ -1803,7 +1822,10 @@ impl Ellisii {
             .map(|(i, h)| format!("<source id={}>{}</source>", i + 1, h.chunk.text))
             .collect::<Vec<_>>()
             .join("\n");
-        let base_system = opts.system.clone().unwrap_or_else(|| DEFAULT_RAG_SYSTEM.to_string());
+        let base_system = opts
+            .system
+            .clone()
+            .unwrap_or_else(|| DEFAULT_RAG_SYSTEM.to_string());
         let user_text = format!("質問: {query}\n\n参考:\n{context}");
         let req = LlmRequest {
             system: base_system.clone(),
@@ -1822,12 +1844,13 @@ impl Ellisii {
             return Ok(hits);
         }
 
-        let answer_buf: Arc<std::sync::Mutex<String>> = Arc::new(std::sync::Mutex::new(String::new()));
+        let answer_buf: Arc<std::sync::Mutex<String>> =
+            Arc::new(std::sync::Mutex::new(String::new()));
         let on_token_arc: Arc<std::sync::Mutex<F>> = Arc::new(std::sync::Mutex::new(on_token));
 
-        let make_cb = |buf: Arc<std::sync::Mutex<String>>, f: Arc<std::sync::Mutex<F>>|
-            -> Box<dyn FnMut(String) + Send + 'static>
-        {
+        let make_cb = |buf: Arc<std::sync::Mutex<String>>,
+                       f: Arc<std::sync::Mutex<F>>|
+         -> Box<dyn FnMut(String) + Send + 'static> {
             Box::new(move |tok: String| {
                 if let Ok(mut b) = buf.lock() {
                     b.push_str(&tok);
@@ -1838,7 +1861,8 @@ impl Ellisii {
             })
         };
 
-        llm.generate_stream(req, make_cb(answer_buf.clone(), on_token_arc.clone())).await?;
+        llm.generate_stream(req, make_cb(answer_buf.clone(), on_token_arc.clone()))
+            .await?;
 
         let answer1 = answer_buf.lock().expect("poisoned").clone();
         let stats = ellisii_rag::citation::verify_citations(&answer1, &hits);
@@ -1873,7 +1897,8 @@ impl Ellisii {
             max_tokens: opts.max_tokens,
             temperature: opts.temperature,
         };
-        llm.generate_stream(retry_req, make_cb(answer_buf.clone(), on_token_arc)).await?;
+        llm.generate_stream(retry_req, make_cb(answer_buf.clone(), on_token_arc))
+            .await?;
 
         // Run 66: faithfulness ratio gate。retry 後の最終応答で unsupported_ratio が
         // 閾値超なら tracing::warn を残す。production 側ではこの warn を拾って UI に
@@ -1932,4 +1957,3 @@ fn is_not_hidden(entry: &walkdir::DirEntry) -> bool {
         .map(|s| s.starts_with('.') && s != "." && s != "..")
         .unwrap_or(false)
 }
-

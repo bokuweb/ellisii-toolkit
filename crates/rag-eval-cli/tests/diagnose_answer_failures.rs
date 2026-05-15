@@ -41,7 +41,8 @@ fn locate_static_jp() -> Option<PathBuf> {
 fn locate_e4b() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
 }
@@ -95,7 +96,10 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
     let per_query_k = top_k.max(6);
     let mut merged: HashMap<Uuid, SearchHit> = HashMap::new();
     for q in &queries {
-        let hits = match engine.retrieve_weighted(Some(nb), q, per_query_k, weights).await {
+        let hits = match engine
+            .retrieve_weighted(Some(nb), q, per_query_k, weights)
+            .await
+        {
             Ok(h) => h,
             Err(_) => continue,
         };
@@ -111,7 +115,11 @@ async fn score_max_retrieve<S: VectorStore + Send + Sync>(
         }
     }
     let mut hits: Vec<SearchHit> = merged.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     hits
 }
@@ -161,7 +169,11 @@ async fn diagnose() {
     let e4b = locate_e4b().expect("Gemma 4 E4B not present");
     let (corpus, golden) = load_fixture("jp-civil-law-hard");
 
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -229,12 +241,18 @@ async fn diagnose() {
     println!("\n=== answer faithfulness diagnostic (worst → best) ===\n");
     for (i, (score, q, want, pred, answer)) in rows.iter().enumerate() {
         let answer_short: String = answer.chars().take(180).collect();
-        let preview = if answer.chars().count() > 180 { format!("{answer_short}...") } else { answer_short };
+        let preview = if answer.chars().count() > 180 {
+            format!("{answer_short}...")
+        } else {
+            answer_short
+        };
         let in_top = pred.iter().any(|p| p == want);
-        let mark = if in_top { "✓ retrieve hit" } else { "✗ retrieve miss" };
-        println!(
-            "[{i:2}] faith={score:.3}  {mark}  want={want}",
-        );
+        let mark = if in_top {
+            "✓ retrieve hit"
+        } else {
+            "✗ retrieve miss"
+        };
+        println!("[{i:2}] faith={score:.3}  {mark}  want={want}",);
         println!("    Q: {q}");
         println!("    pred: {:?}", &pred[..3.min(pred.len())]);
         println!("    A: {preview}");

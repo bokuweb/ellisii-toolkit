@@ -93,7 +93,11 @@ async fn auto_applies_dedup_when_source_count_exceeds_threshold() {
     let mut sources: Vec<Uuid> = hits.iter().map(|h| h.chunk.source_id).collect();
     sources.sort();
     sources.dedup();
-    assert_eq!(sources.len(), 3, "dedup=1 auto should yield 3 distinct sources");
+    assert_eq!(
+        sources.len(),
+        3,
+        "dedup=1 auto should yield 3 distinct sources"
+    );
 }
 
 /// 1 source notebook (source_count=1 < 3) で auto は no-op。
@@ -122,7 +126,10 @@ async fn auto_no_op_when_source_count_below_threshold() {
     let hits_auto = ellisii.search("検索", mk(true)).await.unwrap();
     let ids_off: Vec<Uuid> = hits_off.iter().map(|h| h.chunk.id).collect();
     let ids_auto: Vec<Uuid> = hits_auto.iter().map(|h| h.chunk.id).collect();
-    assert_eq!(ids_off, ids_auto, "auto should not change ranking when source_count<3");
+    assert_eq!(
+        ids_off, ids_auto,
+        "auto should not change ranking when source_count<3"
+    );
     for (a, b) in hits_off.iter().zip(hits_auto.iter()) {
         assert!((a.score - b.score).abs() < 1e-6);
     }
@@ -160,7 +167,11 @@ async fn explicit_max_overrides_auto() {
         .await
         .unwrap();
     // 3 source × 上限 2 = 6 件残るはず (源 6 件すべて)
-    assert_eq!(hits.len(), 6, "explicit max=2 should yield 6 chunks (2 × 3 sources)");
+    assert_eq!(
+        hits.len(),
+        6,
+        "explicit max=2 should yield 6 chunks (2 × 3 sources)"
+    );
 }
 
 /// source_count キャッシュが新規 ingest 後に invalidate される。

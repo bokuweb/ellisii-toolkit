@@ -55,7 +55,11 @@ async fn llm_judge_parses_score_from_response() {
         answer: "A",
     };
     let s = judge.judge_faithfulness(&input).await.unwrap();
-    assert!((s.score - 0.85).abs() < 1e-3, "expected 0.85, got {}", s.score);
+    assert!(
+        (s.score - 0.85).abs() < 1e-3,
+        "expected 0.85, got {}",
+        s.score
+    );
 }
 
 #[tokio::test]
@@ -76,7 +80,8 @@ async fn llm_judge_clamps_to_unit_interval() {
 #[tokio::test]
 async fn llm_judge_extracts_first_float_in_text() {
     // 思考の後に「最終的な答え: 0.42」のように出した場合も拾う。
-    let (llm, _) = ScriptedLlm::new("ややズレている部分があるが概ね一致する。最終: 0.42 と評価する。");
+    let (llm, _) =
+        ScriptedLlm::new("ややズレている部分があるが概ね一致する。最終: 0.42 と評価する。");
     let judge = LlmJudge::new(llm);
     let ctxs = vec!["c".to_string()];
     let input = JudgeInput {
@@ -99,10 +104,23 @@ async fn llm_judge_passes_question_context_answer_into_prompt() {
         answer: "通謀虚偽表示は無効である",
     };
     let _ = judge.judge_faithfulness(&input).await.unwrap();
-    let prompt = captured.lock().unwrap().clone().expect("user prompt captured");
-    assert!(prompt.contains("通謀虚偽表示は無効か"), "prompt missing question: {prompt}");
-    assert!(prompt.contains("民法第94条"), "prompt missing context: {prompt}");
-    assert!(prompt.contains("通謀虚偽表示は無効である"), "prompt missing answer: {prompt}");
+    let prompt = captured
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("user prompt captured");
+    assert!(
+        prompt.contains("通謀虚偽表示は無効か"),
+        "prompt missing question: {prompt}"
+    );
+    assert!(
+        prompt.contains("民法第94条"),
+        "prompt missing context: {prompt}"
+    );
+    assert!(
+        prompt.contains("通謀虚偽表示は無効である"),
+        "prompt missing answer: {prompt}"
+    );
 }
 
 #[tokio::test]
@@ -118,5 +136,8 @@ async fn llm_judge_returns_zero_when_no_number_in_response() {
     let s = judge.judge_faithfulness(&input).await.unwrap();
     // パースに失敗したら controvertial だが、安全側に倒して 0.0 ("不明 = 信頼できない")。
     assert!((s.score - 0.0).abs() < 1e-6, "got {}", s.score);
-    assert!(s.explanation.is_some(), "explanation should record raw response");
+    assert!(
+        s.explanation.is_some(),
+        "explanation should record raw response"
+    );
 }

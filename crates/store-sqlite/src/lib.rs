@@ -483,11 +483,7 @@ impl VectorStore for SqliteStore {
         .map_err(|e| Error::Store(format!("join: {e}")))?
     }
 
-    async fn representative_chunks(
-        &self,
-        scope: Scope,
-        per_source: usize,
-    ) -> Result<Vec<Chunk>> {
+    async fn representative_chunks(&self, scope: Scope, per_source: usize) -> Result<Vec<Chunk>> {
         self.representative_chunks_for_topic(scope, per_source, "")
             .await
     }
@@ -737,7 +733,9 @@ impl VectorStore for SqliteStore {
             };
             let mut out: Vec<(Uuid, String)> = Vec::with_capacity(rows.len());
             for (id, head) in rows {
-                let Ok(uid) = Uuid::parse_str(&id) else { continue };
+                let Ok(uid) = Uuid::parse_str(&id) else {
+                    continue;
+                };
                 for term in ellisii_core::caption::extract_defined_terms(&head) {
                     out.push((uid, term.to_string()));
                 }
@@ -757,12 +755,17 @@ impl VectorStore for SqliteStore {
         tokio::task::spawn_blocking(move || -> Result<Vec<Chunk>> {
             let c = conn.lock();
             // IN 句の placeholders を組み立て (id 数は high のときも 1k 程度を想定)。
-            let placeholders = (0..id_strs.len()).map(|i| format!("?{}", i + 1)).collect::<Vec<_>>().join(",");
+            let placeholders = (0..id_strs.len())
+                .map(|i| format!("?{}", i + 1))
+                .collect::<Vec<_>>()
+                .join(",");
             let sql = format!(
                 "SELECT id, source_id, ord, text, heading_path, page, bbox, summary \
                  FROM chunks WHERE id IN ({placeholders})"
             );
-            let mut stmt = c.prepare(&sql).map_err(|e| Error::Store(format!("prepare: {e}")))?;
+            let mut stmt = c
+                .prepare(&sql)
+                .map_err(|e| Error::Store(format!("prepare: {e}")))?;
             let params_dyn: Vec<&dyn rusqlite::ToSql> =
                 id_strs.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
             let rows = stmt
@@ -957,10 +960,19 @@ mod tests {
 
     #[test]
     fn extract_leading_caption_basic() {
-        assert_eq!(extract_leading_caption("(入湯税の税率)\n第123条"), Some("入湯税の税率"));
-        assert_eq!(extract_leading_caption("  (たばこ税)第85条"), Some("たばこ税"));
+        assert_eq!(
+            extract_leading_caption("(入湯税の税率)\n第123条"),
+            Some("入湯税の税率")
+        );
+        assert_eq!(
+            extract_leading_caption("  (たばこ税)第85条"),
+            Some("たばこ税")
+        );
         // `(...)` が無くても、第N条 + 本文があれば本文先頭を fallback として返す。
-        assert_eq!(extract_leading_caption("第3条 普通税は次のとおり"), Some("普通税は次のとおり"));
+        assert_eq!(
+            extract_leading_caption("第3条 普通税は次のとおり"),
+            Some("普通税は次のとおり")
+        );
         // 第N条 構造ですらない素の本文は None。
         assert_eq!(extract_leading_caption("ただの本文"), None);
         assert_eq!(extract_leading_caption(""), None);
@@ -998,7 +1010,10 @@ mod tests {
         // captioned + article_only の 2 件が拾われる (plain は対象外)。
         assert_eq!(caps.len(), 2, "got: {caps:?}");
         let by_id: std::collections::HashMap<_, _> = caps.into_iter().collect();
-        assert_eq!(by_id.get(&captioned_id).map(|s| s.as_str()), Some("入湯税の税率"));
+        assert_eq!(
+            by_id.get(&captioned_id).map(|s| s.as_str()),
+            Some("入湯税の税率")
+        );
         assert_eq!(
             by_id.get(&article_only_id).map(|s| s.as_str()),
             Some("普通税は次のとおり"),

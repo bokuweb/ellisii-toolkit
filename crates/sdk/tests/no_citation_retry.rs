@@ -81,7 +81,11 @@ async fn setup_ellisii(llm: Arc<ScriptedLlm>) -> Ellisii {
         bbox: None,
         summary: None,
     };
-    let embs = ellisii.embedder().embed(&["dummy".to_string()]).await.unwrap();
+    let embs = ellisii
+        .embedder()
+        .embed(&["dummy".to_string()])
+        .await
+        .unwrap();
     ellisii.store().upsert(nb, &[chunk], &embs).await.unwrap();
     ellisii
 }
@@ -90,7 +94,7 @@ async fn setup_ellisii(llm: Arc<ScriptedLlm>) -> Ellisii {
 #[tokio::test]
 async fn retries_when_first_attempt_has_no_citation() {
     let llm = Arc::new(ScriptedLlm::new(vec![
-        "通謀虚偽表示は無効です。", // 1 周目: [N] 無し
+        "通謀虚偽表示は無効です。",     // 1 周目: [N] 無し
         "通謀虚偽表示は無効です [1]。", // 2 周目: 厳格 prompt で [1] が出た
     ]));
     let ellisii = setup_ellisii(llm.clone()).await;
@@ -114,7 +118,10 @@ async fn retries_when_first_attempt_has_no_citation() {
 
     assert_eq!(llm.calls(), 2, "exactly 2 LLM calls (first + retry)");
     let out = received.lock().unwrap().clone();
-    assert!(out.contains("通謀虚偽表示は無効です。"), "1st attempt streamed (out={out:?})");
+    assert!(
+        out.contains("通謀虚偽表示は無効です。"),
+        "1st attempt streamed (out={out:?})"
+    );
     assert!(out.contains("[出典付きで再生成]"), "retry divider streamed");
     assert!(out.contains("[1]"), "2nd attempt with citation streamed");
     // 2 周目は厳格 prompt のはず
@@ -148,7 +155,11 @@ async fn no_retry_when_first_attempt_has_citation() {
         )
         .await
         .unwrap();
-    assert_eq!(llm.calls(), 1, "only initial LLM call when citation present");
+    assert_eq!(
+        llm.calls(),
+        1,
+        "only initial LLM call when citation present"
+    );
     let out = received.lock().unwrap().clone();
     assert!(!out.contains("[出典付きで再生成]"), "no retry divider");
 }

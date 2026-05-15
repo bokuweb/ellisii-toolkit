@@ -29,7 +29,11 @@ fn load_fixture(domain: &str) -> (Vec<CorpusEntry>, GoldenSet) {
 async fn cs_wiki_fixture_loads_and_validates() {
     let (corpus, golden) = load_fixture("jp-cs-wiki");
     assert!(corpus.len() >= 30, "CS corpus too small: {}", corpus.len());
-    assert!(golden.items.len() >= 30, "CS golden too small: {}", golden.items.len());
+    assert!(
+        golden.items.len() >= 30,
+        "CS golden too small: {}",
+        golden.items.len()
+    );
     let ids: std::collections::HashSet<&str> = corpus.iter().map(|c| c.doc_id.as_str()).collect();
     for it in &golden.items {
         for r in &it.relevant {

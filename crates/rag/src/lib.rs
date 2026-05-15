@@ -149,10 +149,7 @@ pub fn is_specific_query(query: &str) -> bool {
 /// (例: SDK 側で `all_captions` の対応 chunk 上限 256 件を使う)。
 ///
 /// 空配列の取り扱い: queries が空なら `0.0`、bodies が空なら全クエリの max=0 で `0.0`。
-pub fn query_body_recall_mean<Q: AsRef<str>, B: AsRef<str>>(
-    queries: &[Q],
-    bodies: &[B],
-) -> f32 {
+pub fn query_body_recall_mean<Q: AsRef<str>, B: AsRef<str>>(queries: &[Q], bodies: &[B]) -> f32 {
     if queries.is_empty() {
         return 0.0;
     }
@@ -197,10 +194,7 @@ pub fn query_body_recall_mean<Q: AsRef<str>, B: AsRef<str>>(
 /// 判断にはこちらの方が直接的なシグナル。
 ///
 /// 空配列の取り扱い: queries 空 → `0.0`、titles 空 → 全クエリの max=0 で `0.0`。
-pub fn query_title_match_mean<Q: AsRef<str>, T: AsRef<str>>(
-    queries: &[Q],
-    titles: &[T],
-) -> f32 {
+pub fn query_title_match_mean<Q: AsRef<str>, T: AsRef<str>>(queries: &[Q], titles: &[T]) -> f32 {
     if queries.is_empty() {
         return 0.0;
     }
@@ -413,8 +407,7 @@ impl<E: Embedder, S: VectorStore, L: LlmBackend> RagEngine<E, S, L> {
 
         let w_vec = opts.weights.vector();
         let w_kw = opts.weights.keyword();
-        let mut rankings: Vec<(Vec<SearchHit>, f32)> =
-            Vec::with_capacity(queries.len() * 2);
+        let mut rankings: Vec<(Vec<SearchHit>, f32)> = Vec::with_capacity(queries.len() * 2);
 
         for (i, q) in queries.iter().enumerate() {
             let q_weight = if i == 0 { 1.0 } else { opts.variant_weight };
@@ -509,7 +502,10 @@ pub fn rrf_weighted(rankings: &[(Vec<SearchHit>, f32)], top_k: usize) -> Vec<Sea
 
 #[cfg(test)]
 mod tests {
-    use super::{adjust_hybrid_weight_for_query, has_code_snippet, is_specific_query, rrf, rrf_weighted, HybridWeights};
+    use super::{
+        adjust_hybrid_weight_for_query, has_code_snippet, is_specific_query, rrf, rrf_weighted,
+        HybridWeights,
+    };
     use ellisii_core::{Chunk, HitSource as HS, SearchHit};
     use uuid::Uuid;
 
@@ -665,8 +661,7 @@ mod tests {
                 id: Uuid::new_v4(),
                 source_id: Uuid::nil(),
                 ord: 0,
-                text: "15.6リストの長さの制限\n15.7交差テーブルの他のメリット………11"
-                    .into(),
+                text: "15.6リストの長さの制限\n15.7交差テーブルの他のメリット………11".into(),
                 heading_path: vec![],
                 page: None,
                 bbox: None,
@@ -738,7 +733,9 @@ mod tests {
     #[test]
     fn specific_query_rejects_natural_japanese() {
         // 民法 hard 系の自然文 (PR #65 で過剰判定を直したケース) は specific にならない
-        assert!(!is_specific_query("税金を期限までに払えなかったらどうなるか"));
+        assert!(!is_specific_query(
+            "税金を期限までに払えなかったらどうなるか"
+        ));
         assert!(!is_specific_query("通謀虚偽表示は無効か"));
         assert!(!is_specific_query("ふるさと納税の控除"));
     }
@@ -791,7 +788,11 @@ mod tests {
 
     #[test]
     fn specific_query_ratio_all_specific_is_one() {
-        let qs = vec!["民法第94条", "Article 5 of the contract", "https://example.com"];
+        let qs = vec![
+            "民法第94条",
+            "Article 5 of the contract",
+            "https://example.com",
+        ];
         assert!((super::specific_query_ratio(&qs) - 1.0).abs() < 1e-6);
     }
 
@@ -835,10 +836,7 @@ mod tests {
     fn query_body_recall_mean_takes_max_over_bodies() {
         // 1 つの body にだけ完全一致しても、平均は max を取るので 1.0 にできる
         let qs = vec!["入湯税の税率"];
-        let bs = vec![
-            "全く関係のない別の本文です",
-            "入湯税の税率は100円とする",
-        ];
+        let bs = vec!["全く関係のない別の本文です", "入湯税の税率は100円とする"];
         let r = super::query_body_recall_mean(&qs, &bs);
         assert!((r - 1.0).abs() < 1e-6, "got {r}");
     }
@@ -902,12 +900,7 @@ mod tests {
     #[test]
     fn specific_query_ratio_half_mix() {
         // 4 件: specific (第N条 / Article N) 2 件 + 概念 2 件 → 0.5
-        let qs = vec![
-            "民法第94条",
-            "効果について",
-            "Section 12",
-            "税率はいくら",
-        ];
+        let qs = vec!["民法第94条", "効果について", "Section 12", "税率はいくら"];
         let r = super::specific_query_ratio(&qs);
         assert!((r - 0.5).abs() < 1e-6, "got {r}");
     }

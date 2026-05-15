@@ -46,16 +46,16 @@ async fn diagnose_id_required_retrieval() {
     let vaporetto_model = dd.join("models/vaporetto/bccwj-suw+unidic_pos+pron.model.zst");
     assert!(vaporetto_model.is_file(), "vaporetto model missing");
 
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }
-        .build()
-        .expect("static-jp build");
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .expect("static-jp build");
     let dim = embedder.dim();
 
-    let tokenizer: Arc<dyn JpTokenizer> = Arc::new(
-        VaporettoTokenizer::from_zst(&vaporetto_model).expect("vaporetto load"),
-    );
-    let store = SqliteStore::open_with_tokenizer(&db, dim, tokenizer)
-        .expect("open ellisii.db");
+    let tokenizer: Arc<dyn JpTokenizer> =
+        Arc::new(VaporettoTokenizer::from_zst(&vaporetto_model).expect("vaporetto load"));
+    let store = SqliteStore::open_with_tokenizer(&db, dim, tokenizer).expect("open ellisii.db");
 
     let scope: Scope = Some(Uuid::parse_str(NOTEBOOK_ID).unwrap());
 
@@ -122,8 +122,7 @@ async fn diagnose_id_required_retrieval() {
     let keyless_body_count = multi_hits
         .iter()
         .filter(|h| {
-            (h.chunk.text.contains("キーレスエントリ")
-                || h.chunk.text.contains("外部キー嫌い"))
+            (h.chunk.text.contains("キーレスエントリ") || h.chunk.text.contains("外部キー嫌い"))
                 && h.chunk.text.chars().count() > 50
         })
         .count();

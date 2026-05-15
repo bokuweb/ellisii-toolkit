@@ -157,8 +157,7 @@ pub fn is_retrieval_noise(text: &str) -> bool {
             let _ = first;
             // 先頭から「数字 (とドット) のみ」が 2 文字以上続けば目次行とみなす
             let head: String = l.chars().take(8).collect();
-            head.starts_with(|c: char| c.is_ascii_digit())
-                && head.contains('.')
+            head.starts_with(|c: char| c.is_ascii_digit()) && head.contains('.')
         })
         .count();
     if toc_like_lines >= 2 {

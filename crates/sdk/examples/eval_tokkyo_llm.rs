@@ -94,7 +94,12 @@ async fn run() -> anyhow::Result<()> {
     let corpus: Vec<CorpusEntry> = serde_json::from_str(&corpus_json)?;
     let golden_json = std::fs::read_to_string(dir.join("golden.json"))?;
     let gold: GoldenSet = GoldenSet::from_json_str(&golden_json)?;
-    eprintln!("corpus: {} chunks, golden: {} ({} items)", corpus.len(), gold.name, gold.items.len());
+    eprintln!(
+        "corpus: {} chunks, golden: {} ({} items)",
+        corpus.len(),
+        gold.name,
+        gold.items.len()
+    );
 
     // Build chunks once + id_map
     let nb = Uuid::new_v4();
@@ -216,19 +221,28 @@ async fn run() -> anyhow::Result<()> {
         println!(
             "{:<32} {:<10.3} {:<10.3} {:<10.3} {:<10.3} {:<10}",
             format!("cap only (k={})", k),
-            s_cap.recall_at_k, s_cap.hit_at_k, s_cap.ndcg_at_k, s_cap.mrr,
+            s_cap.recall_at_k,
+            s_cap.hit_at_k,
+            s_cap.ndcg_at_k,
+            s_cap.mrr,
             format!("{:.1}s", dur_cap.as_secs_f32())
         );
         println!(
             "{:<32} {:<10.3} {:<10.3} {:<10.3} {:<10.3} {:<10}",
             format!("cap+LlmRewriter (k={})", k),
-            s_llm.recall_at_k, s_llm.hit_at_k, s_llm.ndcg_at_k, s_llm.mrr,
+            s_llm.recall_at_k,
+            s_llm.hit_at_k,
+            s_llm.ndcg_at_k,
+            s_llm.mrr,
             format!("{:.1}s", dur_llm.as_secs_f32())
         );
         println!(
             "{:<32} {:<10.3} {:<10.3} {:<10.3} {:<10.3} {:<10}",
             format!("cap+MultiExpand (k={})", k),
-            s_exp.recall_at_k, s_exp.hit_at_k, s_exp.ndcg_at_k, s_exp.mrr,
+            s_exp.recall_at_k,
+            s_exp.hit_at_k,
+            s_exp.ndcg_at_k,
+            s_exp.mrr,
             format!("{:.1}s", dur_exp.as_secs_f32())
         );
     }

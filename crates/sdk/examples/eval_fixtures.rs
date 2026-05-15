@@ -172,7 +172,9 @@ fn build_chunks(
             GoldenGranularity::DocId => e.doc_id.clone(),
         };
         id_map.insert(cid, label);
-        let sid = *source_by_parent.entry(group_id.clone()).or_insert_with(Uuid::new_v4);
+        let sid = *source_by_parent
+            .entry(group_id.clone())
+            .or_insert_with(Uuid::new_v4);
         let txt = if e.caption.is_empty() {
             e.text.clone()
         } else {
@@ -365,11 +367,15 @@ async fn eval_corpus(
             Vec::new()
         };
         off_pairs.push((
-            off.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect(),
+            off.iter()
+                .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+                .collect(),
             item.relevant.clone(),
         ));
         on_pairs.push((
-            on.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect(),
+            on.iter()
+                .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+                .collect(),
             item.relevant.clone(),
         ));
         let auto_pred: Vec<String> = auto
@@ -408,10 +414,22 @@ async fn eval_corpus(
     let s_off = summarize(&off_pairs, k);
     let s_on = summarize(&on_pairs, k);
     let s_auto = summarize(&auto_pairs, k);
-    let s_dedup = if has_parents { Some(summarize(&dedup_pairs, k)) } else { None };
-    let s_dedup2 = if has_parents { Some(summarize(&dedup2_pairs, k)) } else { None };
+    let s_dedup = if has_parents {
+        Some(summarize(&dedup_pairs, k))
+    } else {
+        None
+    };
+    let s_dedup2 = if has_parents {
+        Some(summarize(&dedup2_pairs, k))
+    } else {
+        None
+    };
     let s_heading = summarize(&heading_pairs, k);
-    let s_combo = if has_parents { Some(summarize(&combo_pairs, k)) } else { None };
+    let s_combo = if has_parents {
+        Some(summarize(&combo_pairs, k))
+    } else {
+        None
+    };
     println!(
         "{:<28} n={:<3} k={:<3} off: hit={:.3} mrr={:.3} rec={:.3}  cap: hit={:.3} mrr={:.3} rec={:.3}  cap+auto: hit={:.3} mrr={:.3} rec={:.3}",
         name,
@@ -446,7 +464,9 @@ async fn eval_corpus(
         name,
         golden.items.len(),
         k,
-        s_heading.hit_at_k, s_heading.mrr, s_heading.recall_at_k,
+        s_heading.hit_at_k,
+        s_heading.mrr,
+        s_heading.recall_at_k,
         s_heading.recall_at_k - s_auto.recall_at_k,
     );
     if let Some(s) = &s_combo {
@@ -471,9 +491,7 @@ async fn eval_corpus(
             } else {
                 format!("[{}]", pred.join(", "))
             };
-            println!(
-                "    • q=「{q}」 expected={expected:?} predicted={pred_show}"
-            );
+            println!("    • q=「{q}」 expected={expected:?} predicted={pred_show}");
         }
     }
     Ok(())

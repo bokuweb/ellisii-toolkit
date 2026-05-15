@@ -8,7 +8,7 @@ use ndlocr_lite_rs::cascade::{
 use ndlocr_lite_rs::infer::cached::ParseqCascadePool;
 use ndlocr_lite_rs::infer::deim_cached::DeimPool;
 use ndlocr_lite_rs::io as nd_io;
-use ndlocr_lite_rs::pipeline::crop::{BBox, CroppedImage, crop_rgb_u8};
+use ndlocr_lite_rs::pipeline::crop::{crop_rgb_u8, BBox, CroppedImage};
 use ndlocr_lite_rs::pipeline::reading_order::sort_bboxes_in_reading_order;
 use ndlocr_lite_rs::postprocess::page_rules::apply_structural_rules;
 use std::sync::{Arc, OnceLock};
@@ -110,7 +110,10 @@ impl OcrBackend for NdlocrBackend {
         let pool = self.get_or_init_pool()?;
         let deim = self.get_or_init_deim()?;
         let started = std::time::Instant::now();
-        tracing::info!("ocr started: {path} (parseq parallel={})", pool.parallelism());
+        tracing::info!(
+            "ocr started: {path} (parseq parallel={})",
+            pool.parallelism()
+        );
         let path_for_blocking = path.clone();
         let result = tokio::task::spawn_blocking(move || {
             ocr_image_blocking(&path_for_blocking, &cfg, &pool, &deim)
@@ -222,12 +225,7 @@ fn prepare_page_crops(
     bboxes
         .iter()
         .map(|[x0i, y0i, x1i, y1i]| {
-            let (x0, y0, x1, y1) = (
-                *x0i as usize,
-                *y0i as usize,
-                *x1i as usize,
-                *y1i as usize,
-            );
+            let (x0, y0, x1, y1) = (*x0i as usize, *y0i as usize, *x1i as usize, *y1i as usize);
             let crop = crop_rgb_u8(img_data, img_w, img_h, BBox::new(x0, y0, x1, y1))
                 .map_err(|e| Error::Ocr(format!("crop: {e}")))?;
             Ok((x0, y0, x1, y1, crop))
@@ -260,8 +258,7 @@ fn ocr_images_batch_blocking(
     // Step 2: 全 page の crops を 1 つの batch_inputs に concat。
     // origins[i] = (page_idx, line_idx_within_page) で結果を逆引きする。
     let total_lines: usize = per_page_crops.iter().map(|c| c.len()).sum();
-    let mut batch_inputs: Vec<(&[u8], usize, usize, Option<f32>)> =
-        Vec::with_capacity(total_lines);
+    let mut batch_inputs: Vec<(&[u8], usize, usize, Option<f32>)> = Vec::with_capacity(total_lines);
     let mut origins: Vec<(usize, usize)> = Vec::with_capacity(total_lines);
     for (page_idx, crops) in per_page_crops.iter().enumerate() {
         for (line_idx, (_, _, _, _, c)) in crops.iter().enumerate() {
@@ -292,8 +289,7 @@ fn ocr_images_batch_blocking(
     }
 
     // Step 4: origin で per-page に振り分け、min_line_confidence で足切り。
-    let mut per_page_blocks: Vec<Vec<OcrBlock>> =
-        (0..paths.len()).map(|_| Vec::new()).collect();
+    let mut per_page_blocks: Vec<Vec<OcrBlock>> = (0..paths.len()).map(|_| Vec::new()).collect();
     for ((page_idx, line_idx), rec) in origins.into_iter().zip(recs.into_iter()) {
         if rec.mean_confidence < cfg.min_line_confidence || rec.text.trim().is_empty() {
             continue;
@@ -376,7 +372,13 @@ fn ocr_image_blocking(
     let img_data: &[u8] = &img.data;
     let img_w = img.width;
     let img_h = img.height;
-    let crops: Vec<(usize, usize, usize, usize, ndlocr_lite_rs::pipeline::crop::CroppedImage)> = bboxes
+    let crops: Vec<(
+        usize,
+        usize,
+        usize,
+        usize,
+        ndlocr_lite_rs::pipeline::crop::CroppedImage,
+    )> = bboxes
         .iter()
         .map(|[x0i, y0i, x1i, y1i]| {
             let (x0, y0, x1, y1) = (*x0i as usize, *y0i as usize, *x1i as usize, *y1i as usize);

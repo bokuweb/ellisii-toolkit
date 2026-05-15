@@ -66,16 +66,28 @@ async fn build_engine() -> RagEngine<CharSumEmbedder, InMemoryStore, EchoLlm> {
         summary: None,
     })
     .collect();
-    let embs = embedder.embed(&chunks.iter().map(|c| c.text.clone()).collect::<Vec<_>>()).await.unwrap();
+    let embs = embedder
+        .embed(&chunks.iter().map(|c| c.text.clone()).collect::<Vec<_>>())
+        .await
+        .unwrap();
     store.upsert(nb, &chunks, &embs).await.unwrap();
-    RagEngine { embedder, store, llm: EchoLlm }
+    RagEngine {
+        embedder,
+        store,
+        llm: EchoLlm,
+    }
 }
 
 #[tokio::test]
 async fn passthrough_multi_query_does_not_regress_single_query() {
     let eng = build_engine().await;
     let single = eng
-        .retrieve_weighted(None, "猫の慣用句について教えて", 4, HybridWeights::default())
+        .retrieve_weighted(
+            None,
+            "猫の慣用句について教えて",
+            4,
+            HybridWeights::default(),
+        )
         .await
         .unwrap();
     let multi = eng
@@ -93,7 +105,10 @@ async fn passthrough_multi_query_does_not_regress_single_query() {
         .unwrap();
     let single_ids: Vec<Uuid> = single.iter().map(|h| h.chunk.id).collect();
     let multi_ids: Vec<Uuid> = multi.iter().map(|h| h.chunk.id).collect();
-    assert_eq!(single_ids, multi_ids, "passthrough must equal single-query order");
+    assert_eq!(
+        single_ids, multi_ids,
+        "passthrough must equal single-query order"
+    );
 }
 
 /// 元クエリだけだと拾いにくい variant を追加すると、その variant に該当する

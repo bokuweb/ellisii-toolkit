@@ -76,8 +76,12 @@ async fn passthrough_rewriter_matches_no_rewriter() {
         },
     };
 
-    let a = run_eval_with_options(&baseline, &corpus, &golden).await.unwrap();
-    let b = run_eval_with_options(&with_pass, &corpus, &golden).await.unwrap();
+    let a = run_eval_with_options(&baseline, &corpus, &golden)
+        .await
+        .unwrap();
+    let b = run_eval_with_options(&with_pass, &corpus, &golden)
+        .await
+        .unwrap();
     for (ra, rb) in a.iter().zip(b.iter()) {
         assert_eq!(ra.semantic, rb.semantic);
         assert!(
@@ -137,8 +141,12 @@ async fn kana_variant_does_not_regress_recall() {
         },
     };
 
-    let base = run_eval_with_options(&baseline, &corpus, &golden).await.unwrap();
-    let multi = run_eval_with_options(&with_kana, &corpus, &golden).await.unwrap();
+    let base = run_eval_with_options(&baseline, &corpus, &golden)
+        .await
+        .unwrap();
+    let multi = run_eval_with_options(&with_kana, &corpus, &golden)
+        .await
+        .unwrap();
     println!("=== kana-variant mini eval ===");
     for (b, m) in base.iter().zip(multi.iter()) {
         println!(

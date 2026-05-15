@@ -64,9 +64,14 @@ async fn judge_none_keeps_existing_behavior() {
         rewriter: None,
         multi: ellisii_rag::MultiQueryOptions::default(),
     };
-    let rows = run_eval_with_options(&opts, &corpus(), &golden()).await.unwrap();
+    let rows = run_eval_with_options(&opts, &corpus(), &golden())
+        .await
+        .unwrap();
     assert_eq!(rows.len(), 1);
-    assert!(rows[0].faithfulness.is_none(), "judge=None should not produce faithfulness");
+    assert!(
+        rows[0].faithfulness.is_none(),
+        "judge=None should not produce faithfulness"
+    );
 }
 
 #[tokio::test]
@@ -81,7 +86,9 @@ async fn judge_set_produces_faithfulness_summary() {
         rewriter: None,
         multi: ellisii_rag::MultiQueryOptions::default(),
     };
-    let rows = run_eval_with_options(&opts, &corpus(), &golden()).await.unwrap();
+    let rows = run_eval_with_options(&opts, &corpus(), &golden())
+        .await
+        .unwrap();
     let f = rows[0]
         .faithfulness
         .as_ref()

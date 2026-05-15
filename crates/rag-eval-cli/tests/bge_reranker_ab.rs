@@ -138,7 +138,11 @@ async fn apply_ce_rerank(
         let norm_orig = (h.score / max_orig).clamp(0.0, 1.0);
         h.score = ce_weight * ce + (1.0 - ce_weight) * norm_orig;
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits
 }
 
@@ -188,7 +192,8 @@ async fn measure_one(
 async fn measure_domain(domain: &str) {
     let static_jp = locate_static_jp().expect("static-jp model not present");
     let provence_dir = locate_open_provence().expect("open-provence model not present");
-    let bge_dir = locate_bge_reranker().expect("bge-reranker-v2-m3 model not present (see scripts/fetch-bge-reranker.sh)");
+    let bge_dir = locate_bge_reranker()
+        .expect("bge-reranker-v2-m3 model not present (see scripts/fetch-bge-reranker.sh)");
 
     let (corpus, golden) = load_fixture(domain);
     let queries = golden.items.len();
@@ -237,8 +242,8 @@ async fn measure_domain(domain: &str) {
     let ce_pool = top_k * 2;
     let ce_weight = 0.7;
 
-    let provence = ProvenceOnnx::load(&provence_dir, ProvenceConfig::default())
-        .expect("load open-provence");
+    let provence =
+        ProvenceOnnx::load(&provence_dir, ProvenceConfig::default()).expect("load open-provence");
     let bge =
         ProvenceOnnx::load(&bge_dir, ProvenceConfig::default()).expect("load bge-reranker-v2-m3");
 
@@ -247,9 +252,18 @@ async fn measure_domain(domain: &str) {
     );
     println!("  config                   recall  hit    nDCG   MRR     time");
 
-    let (b_rec, _b_hit, b_ndcg, b_mrr, _) =
-        measure_one(&engine, nb, &id_map, &golden, None, "baseline (no CE)", ce_pool, top_k, 0.0)
-            .await;
+    let (b_rec, _b_hit, b_ndcg, b_mrr, _) = measure_one(
+        &engine,
+        nb,
+        &id_map,
+        &golden,
+        None,
+        "baseline (no CE)",
+        ce_pool,
+        top_k,
+        0.0,
+    )
+    .await;
     let (p_rec, _p_hit, p_ndcg, p_mrr, _) = measure_one(
         &engine,
         nb,

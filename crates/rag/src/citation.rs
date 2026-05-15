@@ -291,9 +291,8 @@ pub fn split_sentences_with_spans(text: &str) -> Vec<(usize, usize, &str)> {
 /// 英数字も 2 chars 以上を採用、小文字化して dedup する。
 pub fn tokens_for_overlap(text: &str) -> Vec<String> {
     static TOK_RE: OnceLock<Regex> = OnceLock::new();
-    let re = TOK_RE.get_or_init(|| {
-        Regex::new(r"[\p{Han}]{2,}|[A-Za-z0-9０-９]{2,}").expect("tok re")
-    });
+    let re =
+        TOK_RE.get_or_init(|| Regex::new(r"[\p{Han}]{2,}|[A-Za-z0-9０-９]{2,}").expect("tok re"));
     let mut out: Vec<String> = re
         .find_iter(text)
         .map(|m| m.as_str().to_lowercase())
@@ -328,7 +327,10 @@ mod tests {
 
     #[test]
     fn citation_stats_unsupported_ratio_basic() {
-        let s = CitationStats { total: 4, unsupported: 1 };
+        let s = CitationStats {
+            total: 4,
+            unsupported: 1,
+        };
         assert!((s.unsupported_ratio() - 0.25).abs() < 1e-6);
         assert_eq!(s.supported(), 3);
         assert!(!s.is_unsupported_high());
@@ -343,7 +345,10 @@ mod tests {
 
     #[test]
     fn citation_stats_unsupported_ratio_high() {
-        let s = CitationStats { total: 2, unsupported: 1 };
+        let s = CitationStats {
+            total: 2,
+            unsupported: 1,
+        };
         // ratio = 0.5 == threshold → is_high = true
         assert!((s.unsupported_ratio() - 0.5).abs() < 1e-6);
         assert!(s.is_unsupported_high());
@@ -351,7 +356,10 @@ mod tests {
 
     #[test]
     fn citation_stats_unsupported_ratio_full_unsupported() {
-        let s = CitationStats { total: 3, unsupported: 3 };
+        let s = CitationStats {
+            total: 3,
+            unsupported: 3,
+        };
         assert_eq!(s.unsupported_ratio(), 1.0);
         assert!(s.is_unsupported_high());
         assert_eq!(s.supported(), 0);
@@ -463,7 +471,10 @@ mod tests {
         assert_eq!(span.marker, "[1]");
         assert_eq!(span.n, 1);
         assert_eq!(span.hit_index, Some(0));
-        assert!(span.chunk_sentence.is_some(), "should match a chunk sentence");
+        assert!(
+            span.chunk_sentence.is_some(),
+            "should match a chunk sentence"
+        );
         // 最大 overlap は 1 文目 (「通謀虚偽表示は無効とする。」)
         let chunk_s = span.chunk_sentence.as_ref().unwrap();
         assert!(

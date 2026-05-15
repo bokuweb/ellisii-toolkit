@@ -17,11 +17,11 @@ use ellisii_embed_core::Embedder;
 use ellisii_llm_stub::EchoLlm;
 use ellisii_provence_core::ContextCompressor;
 use ellisii_provence_onnx::{ProvenceConfig, ProvenceOnnx};
+use ellisii_query_rewriter_core::QueryRewriter;
 use ellisii_rag::{
     eval::{summarize, GoldenSet},
     HybridWeights, MultiQueryOptions, RagEngine,
 };
-use ellisii_query_rewriter_core::QueryRewriter;
 use ellisii_rag_eval_cli::{CorpusEntry, EmbedderKind};
 use ellisii_store_core::VectorStore;
 use ellisii_store_sqlite::SqliteStore;
@@ -55,7 +55,8 @@ fn locate_provence() -> Option<PathBuf> {
         }
     }
     if let Some(home) = std::env::var_os("HOME") {
-        let mac = PathBuf::from(&home).join("Library/Application Support/ellisii/models/open-provence");
+        let mac =
+            PathBuf::from(&home).join("Library/Application Support/ellisii/models/open-provence");
         if mac.is_dir() {
             return Some(mac);
         }
@@ -112,7 +113,11 @@ async fn apply_ce_rerank(
         let norm_orig = (h.score / max_orig).clamp(0.0, 1.0);
         h.score = ce_weight * ce + (1.0 - ce_weight) * norm_orig;
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits
 }
 
@@ -125,7 +130,11 @@ async fn measure_ce_rerank_civil_law_hard() {
     let queries = golden.items.len();
 
     // Embedder + store の構築
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -162,8 +171,8 @@ async fn measure_ce_rerank_civil_law_hard() {
     };
 
     // open-provence モデルをロード
-    let provence = ProvenceOnnx::load(&provence_dir, ProvenceConfig::default())
-        .expect("load open-provence");
+    let provence =
+        ProvenceOnnx::load(&provence_dir, ProvenceConfig::default()).expect("load open-provence");
 
     // top_k=10, ce_pool=20 (src-tauri と同じ「2x 候補→CE で並べ替え→top_k」)
     let top_k = 10usize;
@@ -188,7 +197,12 @@ async fn measure_ce_rerank_civil_law_hard() {
         let mut pairs = Vec::with_capacity(golden.items.len());
         for item in &golden.items {
             let mut hits = engine
-                .retrieve_weighted(Some(nb), &item.query, ce_pool, HybridWeights { semantic: 0.75 })
+                .retrieve_weighted(
+                    Some(nb),
+                    &item.query,
+                    ce_pool,
+                    HybridWeights { semantic: 0.75 },
+                )
                 .await
                 .unwrap();
             if let Some(w) = ce_weight {
@@ -205,7 +219,12 @@ async fn measure_ce_rerank_civil_law_hard() {
         let dt = t0.elapsed();
         println!(
             "  {:<21} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-            label, s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, dt.as_secs_f32()
+            label,
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            dt.as_secs_f32()
         );
     }
 
@@ -217,7 +236,12 @@ async fn measure_ce_rerank_civil_law_hard() {
         let mut pairs = Vec::with_capacity(golden.items.len());
         for item in &golden.items {
             let mut hits = engine
-                .retrieve_weighted(Some(nb), &item.query, pool, HybridWeights { semantic: 0.75 })
+                .retrieve_weighted(
+                    Some(nb),
+                    &item.query,
+                    pool,
+                    HybridWeights { semantic: 0.75 },
+                )
                 .await
                 .unwrap();
             hits = apply_ce_rerank(&provence, &item.query, hits, 0.7).await;
@@ -232,7 +256,12 @@ async fn measure_ce_rerank_civil_law_hard() {
         let dt = t0.elapsed();
         println!(
             "  {:<7} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-            pool, s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, dt.as_secs_f32()
+            pool,
+            s.recall_at_k,
+            s.hit_at_k,
+            s.ndcg_at_k,
+            s.mrr,
+            dt.as_secs_f32()
         );
     }
 }
@@ -250,7 +279,8 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
     let provence_dir = locate_provence().expect("open-provence model not present");
     let e4b = std::env::var_os("HOME")
         .map(|h| {
-            PathBuf::from(&h).join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
+            PathBuf::from(&h)
+                .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf")
         })
         .filter(|p| p.is_file())
         .expect("gemma-4-E4B GGUF not present");
@@ -258,7 +288,11 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
     let queries = golden.items.len();
 
     // build engine
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
     let dim = embedder.dim();
     let store = SqliteStore::open_in_memory(dim).unwrap();
     let nb = Uuid::new_v4();
@@ -335,13 +369,21 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
             .await
             .unwrap();
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s = summarize(&pairs, top_k);
     println!(
         "  {:<23} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        "baseline", s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+        "baseline",
+        s.recall_at_k,
+        s.hit_at_k,
+        s.ndcg_at_k,
+        s.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     // (b) +CE
@@ -354,13 +396,21 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
             .unwrap();
         hits = apply_ce_rerank(&provence, &item.query, hits, 0.7).await;
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s = summarize(&pairs, top_k);
     println!(
         "  {:<23} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        "+CE (0.7/0.3)", s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+        "+CE (0.7/0.3)",
+        s.recall_at_k,
+        s.hit_at_k,
+        s.ndcg_at_k,
+        s.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     // (c) +Rewriter
@@ -372,13 +422,21 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
             .await
             .unwrap();
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s = summarize(&pairs, top_k);
     println!(
         "  {:<23} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        "+Rewriter", s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+        "+Rewriter",
+        s.recall_at_k,
+        s.hit_at_k,
+        s.ndcg_at_k,
+        s.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     // (d) +Rewriter +CE
@@ -391,13 +449,21 @@ async fn measure_rewriter_plus_ce_civil_law_hard() {
             .unwrap();
         hits = apply_ce_rerank(&provence, &item.query, hits, 0.7).await;
         hits.truncate(top_k);
-        let predicted: Vec<String> = hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+        let predicted: Vec<String> = hits
+            .iter()
+            .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+            .collect();
         pairs.push((predicted, item.relevant.clone()));
     }
     let s = summarize(&pairs, top_k);
     println!(
         "  {:<23} {:.3}   {:.3}  {:.3}  {:.3}   {:.1}s",
-        "+Rewriter +CE", s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, t0.elapsed().as_secs_f32()
+        "+Rewriter +CE",
+        s.recall_at_k,
+        s.hit_at_k,
+        s.ndcg_at_k,
+        s.mrr,
+        t0.elapsed().as_secs_f32()
     );
 
     let _ = QueryRewriter::rewrite(&rewriter, "_", 0).await; // silence unused warning

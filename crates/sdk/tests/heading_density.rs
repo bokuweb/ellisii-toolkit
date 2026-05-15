@@ -77,9 +77,9 @@ async fn rich_japanese_headings_are_one() {
     let nb = Uuid::new_v4();
     let ellisii = build(nb).await;
     let cs = vec![
-        chunk_with_heading(vec!["1.4 ロードバランサ"]),       // 11 chars
-        chunk_with_heading(vec!["第三条 私権の享有"]),         // 9 chars
-        chunk_with_heading(vec!["（入湯税の税率について）"]),   // 12 chars
+        chunk_with_heading(vec!["1.4 ロードバランサ"]), // 11 chars
+        chunk_with_heading(vec!["第三条 私権の享有"]),  // 9 chars
+        chunk_with_heading(vec!["（入湯税の税率について）"]), // 12 chars
     ];
     upsert(&ellisii, nb, cs).await;
     let d = ellisii.heading_density().await.unwrap();
@@ -92,10 +92,10 @@ async fn mixed_corpus_returns_proportion() {
     let nb = Uuid::new_v4();
     let ellisii = build(nb).await;
     let cs = vec![
-        chunk_with_heading(vec!["1.4 ロードバランサ"]),     // 11 chars → pass
-        chunk_with_heading(vec!["第三条 私権の享有"]),       // 9 chars → pass
-        chunk_with_heading(vec!["minpou-94"]),               // ASCII → fail
-        chunk_with_heading(vec!["第一条目"]),                // 4 chars (< 8) → fail
+        chunk_with_heading(vec!["1.4 ロードバランサ"]), // 11 chars → pass
+        chunk_with_heading(vec!["第三条 私権の享有"]),  // 9 chars → pass
+        chunk_with_heading(vec!["minpou-94"]),          // ASCII → fail
+        chunk_with_heading(vec!["第一条目"]),           // 4 chars (< 8) → fail
     ];
     upsert(&ellisii, nb, cs).await;
     let d = ellisii.heading_density().await.unwrap();
@@ -108,8 +108,8 @@ async fn short_jp_headings_below_threshold() {
     let nb = Uuid::new_v4();
     let ellisii = build(nb).await;
     let cs = vec![
-        chunk_with_heading(vec!["あ"]),               // 1 char
-        chunk_with_heading(vec!["いろは"]),           // 3 chars
+        chunk_with_heading(vec!["あ"]),                // 1 char
+        chunk_with_heading(vec!["いろは"]),            // 3 chars
         chunk_with_heading(vec!["第一条目"]),          // 4 chars
         chunk_with_heading(vec!["第三条 私権の享有"]), // 9 chars → 通る
     ];
@@ -126,10 +126,10 @@ async fn topic_name_titles_are_filtered_out() {
     let ellisii = build(nb).await;
     // 全部 8 文字未満 (旧閾値 4 では 1.0、新閾値 8 では 0 を期待)
     let cs = vec![
-        chunk_with_heading(vec!["ACID"]),         // 4 chars + ASCII → fail (ASCII)
-        chunk_with_heading(vec!["TLS"]),          // 3 + ASCII → fail
-        chunk_with_heading(vec!["B木"]),          // 2 chars → fail
-        chunk_with_heading(vec!["セマフォ"]),     // 4 chars → fail (< 8)
+        chunk_with_heading(vec!["ACID"]), // 4 chars + ASCII → fail (ASCII)
+        chunk_with_heading(vec!["TLS"]),  // 3 + ASCII → fail
+        chunk_with_heading(vec!["B木"]),  // 2 chars → fail
+        chunk_with_heading(vec!["セマフォ"]), // 4 chars → fail (< 8)
         chunk_with_heading(vec!["デッドロック"]), // 6 chars → fail (< 8)
         chunk_with_heading(vec!["関係の正規化"]), // 6 chars → fail (< 8)
     ];

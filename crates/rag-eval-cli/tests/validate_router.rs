@@ -150,7 +150,10 @@ fn has_article_id(query: &str) -> bool {
             let mut found_digit = false;
             while j < chars.len() {
                 let c = chars[j];
-                if c.is_ascii_digit() || ('０'..='９').contains(&c) || "一二三四五六七八九十百千".contains(c) {
+                if c.is_ascii_digit()
+                    || ('０'..='９').contains(&c)
+                    || "一二三四五六七八九十百千".contains(c)
+                {
                     found_digit = true;
                     j += 1;
                 } else {
@@ -165,7 +168,9 @@ fn has_article_id(query: &str) -> bool {
     let lower = query.to_lowercase();
     if let Some(idx) = lower.find("article ") {
         let rest = &query[idx + "article ".len()..];
-        if rest.chars().next().map_or(false, |c| c.is_ascii_digit() || matches!(c, 'I' | 'V' | 'X' | 'L' | 'C' | 'D' | 'M')) {
+        if rest.chars().next().map_or(false, |c| {
+            c.is_ascii_digit() || matches!(c, 'I' | 'V' | 'X' | 'L' | 'C' | 'D' | 'M')
+        }) {
             return true;
         }
     }
@@ -177,7 +182,12 @@ fn has_article_id(query: &str) -> bool {
     }
     if let Some(idx) = lower.find("sec.") {
         let rest = &query[idx + "sec.".len()..];
-        if rest.trim_start().chars().next().map_or(false, |c| c.is_ascii_digit()) {
+        if rest
+            .trim_start()
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_ascii_digit())
+        {
             return true;
         }
     }
@@ -214,7 +224,12 @@ fn has_urlish(query: &str) -> bool {
     // 簡易メール検出: x@y.z
     if let Some(at) = query.find('@') {
         let after = &query[at + 1..];
-        if after.contains('.') && after.chars().take_while(|c| !c.is_whitespace()).any(|c| c == '.') {
+        if after.contains('.')
+            && after
+                .chars()
+                .take_while(|c| !c.is_whitespace())
+                .any(|c| c == '.')
+        {
             return true;
         }
     }
@@ -319,8 +334,16 @@ fn validate_router_alignment() {
         (total_aligned, total_misaligned)
     }
 
-    let (a_legacy, _m1) = run("legacy router (kanji_count>=4 のバグあり)", expectations, looks_specific_query_legacy);
-    let (a_new, _m2) = run("現本番 router (kanji 廃止 + code 検出)", expectations, looks_specific_query);
+    let (a_legacy, _m1) = run(
+        "legacy router (kanji_count>=4 のバグあり)",
+        expectations,
+        looks_specific_query_legacy,
+    );
+    let (a_new, _m2) = run(
+        "現本番 router (kanji 廃止 + code 検出)",
+        expectations,
+        looks_specific_query,
+    );
 
     println!(
         "\n  alignment 改善: legacy {} → new {} (+{})",
@@ -368,8 +391,12 @@ fn looks_specific_known_negatives() {
     // 漢字 4 個以上だけでは specific ではない (legacy バグ)。これらは
     // むしろ rewriter で expand したいケース (民法 hard 系の自然文)。
     assert!(!looks_specific_query("不法行為損害賠償請求"));
-    assert!(!looks_specific_query("中学生が買ったゲーム機を親はキャンセルできるか"));
-    assert!(!looks_specific_query("脅されて結ばされた契約はどう扱われるか"));
+    assert!(!looks_specific_query(
+        "中学生が買ったゲーム機を親はキャンセルできるか"
+    ));
+    assert!(!looks_specific_query(
+        "脅されて結ばされた契約はどう扱われるか"
+    ));
     // 短い ASCII (DB, ID, MRI 等) だけでは specific 判定しない
     assert!(!looks_specific_query("DB に保存するパスワード"));
     assert!(!looks_specific_query("MRI 検査の時間を短くしたい"));

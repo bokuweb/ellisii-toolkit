@@ -210,11 +210,7 @@ impl VectorStore for InMemoryStore {
         Ok(rows.into_iter().map(|(_, t)| t).collect())
     }
 
-    async fn representative_chunks(
-        &self,
-        scope: Scope,
-        per_source: usize,
-    ) -> Result<Vec<Chunk>> {
+    async fn representative_chunks(&self, scope: Scope, per_source: usize) -> Result<Vec<Chunk>> {
         if per_source == 0 {
             return Ok(vec![]);
         }
@@ -601,7 +597,9 @@ mod tests {
         let a = chunk(a_text);
         let b = chunk(b_text);
         let a_id = a.id;
-        s.upsert(nb, &[a, b], &[vec![1.0], vec![1.0]]).await.unwrap();
+        s.upsert(nb, &[a, b], &[vec![1.0], vec![1.0]])
+            .await
+            .unwrap();
 
         let terms = s.all_defined_terms(Some(nb)).await.unwrap();
         let a_terms: Vec<&str> = terms
@@ -612,7 +610,13 @@ mod tests {
         assert!(a_terms.contains(&"事業所等"), "got {a_terms:?}");
         assert!(a_terms.contains(&"特別徴収義務者"), "got {a_terms:?}");
         // chunk B には定義語なし
-        assert_eq!(terms.iter().filter(|(_, t)| t == "都市計画税の税率").count(), 0);
+        assert_eq!(
+            terms
+                .iter()
+                .filter(|(_, t)| t == "都市計画税の税率")
+                .count(),
+            0
+        );
     }
 
     #[tokio::test]
@@ -634,9 +638,13 @@ mod tests {
         let s = InMemoryStore::new();
         let nb_a = Uuid::new_v4();
         let nb_b = Uuid::new_v4();
-        s.upsert(nb_a, &[chunk("a1"), chunk("a2"), chunk("a3")], &[vec![1.0], vec![1.0], vec![1.0]])
-            .await
-            .unwrap();
+        s.upsert(
+            nb_a,
+            &[chunk("a1"), chunk("a2"), chunk("a3")],
+            &[vec![1.0], vec![1.0], vec![1.0]],
+        )
+        .await
+        .unwrap();
         s.upsert(nb_b, &[chunk("b1")], &[vec![1.0]]).await.unwrap();
         assert_eq!(s.count_chunks_in_scope(Some(nb_a)).await.unwrap(), 3);
         assert_eq!(s.count_chunks_in_scope(Some(nb_b)).await.unwrap(), 1);

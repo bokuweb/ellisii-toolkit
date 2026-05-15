@@ -90,7 +90,11 @@ pub fn caption_boost_in_place(query: &str, hits: &mut Vec<SearchHit>, alpha: f32
             h.score += alpha * ov;
         }
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 }
 
 /// 各 hit の `heading_path` を caption と同じ要領で query と bigram 比較し、最大の一致率を
@@ -110,7 +114,11 @@ pub fn heading_boost_in_place(query: &str, hits: &mut Vec<SearchHit>, alpha: f32
         }
         h.score += alpha * best;
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 }
 
 /// 並び順を保ったまま、`source_id` ごとの出現回数が `max_per_source` を超えた hit を
@@ -158,8 +166,7 @@ pub fn apply_caption_index(
     top_n: usize,
     bonus_alpha: f32,
 ) -> HashMap<Uuid, f32> {
-    let mut id_score: HashMap<Uuid, f32> =
-        hits.iter().map(|h| (h.chunk.id, h.score)).collect();
+    let mut id_score: HashMap<Uuid, f32> = hits.iter().map(|h| (h.chunk.id, h.score)).collect();
 
     let mut scored: Vec<(f32, &Uuid)> = captions
         .iter()
@@ -170,7 +177,10 @@ pub fn apply_caption_index(
 
     for (s, id) in scored.into_iter().take(top_n) {
         let bonus = bonus_alpha * s;
-        id_score.entry(*id).and_modify(|v| *v += bonus).or_insert(bonus);
+        id_score
+            .entry(*id)
+            .and_modify(|v| *v += bonus)
+            .or_insert(bonus);
     }
     id_score
 }
@@ -237,7 +247,10 @@ pub fn caption_boost_in_place_with_idf(
     for h in hits.iter_mut() {
         // caption 側: IDF 重みあり
         let (cap_ov, cap_w) = match extract_caption_or_lead(&h.chunk.text) {
-            Some(cap) => (caption_overlap(query, cap), idf.get(cap).copied().unwrap_or(1.0)),
+            Some(cap) => (
+                caption_overlap(query, cap),
+                idf.get(cap).copied().unwrap_or(1.0),
+            ),
             None => (0.0, 1.0),
         };
         let cap_boost = if cap_ov >= MIN_CAPTION_OVERLAP {
@@ -257,7 +270,11 @@ pub fn caption_boost_in_place_with_idf(
         };
         h.score += cap_boost.max(def_boost);
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 }
 
 /// `apply_caption_index` に IDF を加味した版。
@@ -269,8 +286,7 @@ pub fn apply_caption_index_with_idf(
     bonus_alpha: f32,
     idf: &HashMap<String, f32>,
 ) -> HashMap<Uuid, f32> {
-    let mut id_score: HashMap<Uuid, f32> =
-        hits.iter().map(|h| (h.chunk.id, h.score)).collect();
+    let mut id_score: HashMap<Uuid, f32> = hits.iter().map(|h| (h.chunk.id, h.score)).collect();
 
     let mut scored: Vec<(f32, &Uuid)> = captions
         .iter()
@@ -285,7 +301,10 @@ pub fn apply_caption_index_with_idf(
 
     for (s, id) in scored.into_iter().take(top_n) {
         let bonus = bonus_alpha * s;
-        id_score.entry(*id).and_modify(|v| *v += bonus).or_insert(bonus);
+        id_score
+            .entry(*id)
+            .and_modify(|v| *v += bonus)
+            .or_insert(bonus);
     }
     id_score
 }
@@ -330,7 +349,10 @@ mod tests {
         let q_empty = "";
         let s_rel = max_caption_overlap(q_relevant, &captions);
         let s_irr = max_caption_overlap(q_irrelevant, &captions);
-        assert!(s_rel >= MIN_CAPTION_OVERLAP, "expected ≥ floor, got {s_rel}");
+        assert!(
+            s_rel >= MIN_CAPTION_OVERLAP,
+            "expected ≥ floor, got {s_rel}"
+        );
         assert!(s_irr < MIN_CAPTION_OVERLAP, "expected < floor, got {s_irr}");
         assert_eq!(max_caption_overlap(q_empty, &captions), 0.0);
         assert_eq!(max_caption_overlap("anything", &[]), 0.0);
@@ -338,8 +360,14 @@ mod tests {
 
     #[test]
     fn extract_caption_basic() {
-        assert_eq!(extract_caption("(入湯税の税率)\n\n第123条 ..."), Some("入湯税の税率"));
-        assert_eq!(extract_caption("  \n  (たばこ税の税率) 第85条"), Some("たばこ税の税率"));
+        assert_eq!(
+            extract_caption("(入湯税の税率)\n\n第123条 ..."),
+            Some("入湯税の税率")
+        );
+        assert_eq!(
+            extract_caption("  \n  (たばこ税の税率) 第85条"),
+            Some("たばこ税の税率")
+        );
     }
 
     #[test]
@@ -444,10 +472,7 @@ mod tests {
 
     #[test]
     fn caption_boost_zero_alpha_is_noop() {
-        let mut pool = vec![
-            hit("(B)\n\n第2条", 0.10),
-            hit("(A)\n\n第1条", 0.20),
-        ];
+        let mut pool = vec![hit("(B)\n\n第2条", 0.10), hit("(A)\n\n第1条", 0.20)];
         let before: Vec<_> = pool.iter().map(|h| (h.chunk.id, h.score)).collect();
         caption_boost_in_place("A", &mut pool, 0.0);
         let after: Vec<_> = pool.iter().map(|h| (h.chunk.id, h.score)).collect();
@@ -488,7 +513,11 @@ mod tests {
     fn heading_boost_promotes_matching_heading() {
         // caption が抽出できない (= '(...)' で始まらない) chunk でも、heading_path を介して
         // 引き上げられること
-        let a = hit_with_heading("第3条 普通税は次のとおり", 0.10, vec!["第1章 総則", "普通税の種類"]);
+        let a = hit_with_heading(
+            "第3条 普通税は次のとおり",
+            0.10,
+            vec!["第1章 総則", "普通税の種類"],
+        );
         let b = hit_with_heading("第500条 別件", 0.10, vec!["第99章 別件"]);
         let a_id = a.chunk.id;
         let mut pool = vec![b, a];
@@ -506,7 +535,10 @@ mod tests {
             vec!["関係ない章", "通謀虚偽表示", "もっと別の節"],
         );
         let h_id = h.chunk.id;
-        let mut pool = vec![hit_with_heading("別の本文", 0.10, vec!["別の章"]), h.clone()];
+        let mut pool = vec![
+            hit_with_heading("別の本文", 0.10, vec!["別の章"]),
+            h.clone(),
+        ];
         heading_boost_in_place("通謀虚偽表示の意味", &mut pool, 1.0);
         assert_eq!(pool[0].chunk.id, h_id);
         let _ = h;
@@ -533,9 +565,18 @@ mod tests {
         let idf = compute_caption_idf(&captions);
         let unique = idf["入湯税の税率"];
         let common = idf["効果"];
-        assert!(unique > common, "unique={unique} should beat common={common}");
-        assert!((unique - 1.0).abs() < 1e-6, "rarest caption should be 1.0, got {unique}");
-        assert!(common > 0.0 && common < unique, "common caption should be discounted but positive, got {common}");
+        assert!(
+            unique > common,
+            "unique={unique} should beat common={common}"
+        );
+        assert!(
+            (unique - 1.0).abs() < 1e-6,
+            "rarest caption should be 1.0, got {unique}"
+        );
+        assert!(
+            common > 0.0 && common < unique,
+            "common caption should be discounted but positive, got {common}"
+        );
     }
 
     #[test]
@@ -590,14 +631,7 @@ mod tests {
         let mut idf = HashMap::new();
         idf.insert("入湯税の税率".to_string(), 1.0_f32);
         idf.insert("効果".to_string(), 0.2_f32);
-        let scores = apply_caption_index_with_idf(
-            "入湯税の税率",
-            &pool,
-            &captions,
-            5,
-            1.0,
-            &idf,
-        );
+        let scores = apply_caption_index_with_idf("入湯税の税率", &pool, &captions, 5, 1.0, &idf);
         let unique_s = scores.get(&unique_id).copied().unwrap_or(0.0);
         let common_s = scores.get(&common_id).copied().unwrap_or(0.0);
         assert!(

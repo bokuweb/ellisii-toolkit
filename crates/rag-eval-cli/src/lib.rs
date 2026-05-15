@@ -15,17 +15,17 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use ellisii_core::{Chunk, Result as CoreResult, SearchHit};
 use ellisii_embed_core::Embedder;
+use ellisii_embed_static_jp::StaticJpEmbedder;
+use ellisii_llm_core::{LlmBackend, LlmRequest};
 use ellisii_llm_stub::EchoLlm;
 use ellisii_query_rewriter_core::QueryRewriter;
 use ellisii_rag::{
     eval::{summarize, EvalSummary, GoldenSet},
     HybridWeights, MultiQueryOptions, RagEngine,
 };
+use ellisii_rag_answer_eval::{AnswerJudge, FaithfulnessScore, FaithfulnessSummary, JudgeInput};
 use ellisii_store_core::VectorStore;
 use ellisii_store_memory::InMemoryStore;
-use ellisii_embed_static_jp::StaticJpEmbedder;
-use ellisii_llm_core::{LlmBackend, LlmRequest};
-use ellisii_rag_answer_eval::{AnswerJudge, FaithfulnessScore, FaithfulnessSummary, JudgeInput};
 use ellisii_store_sqlite::SqliteStore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -47,7 +47,9 @@ impl Backend {
         match s {
             "memory" => Ok(Backend::Memory),
             "sqlite" => Ok(Backend::Sqlite),
-            other => Err(anyhow!("unknown backend {other:?} (expected memory | sqlite)")),
+            other => Err(anyhow!(
+                "unknown backend {other:?} (expected memory | sqlite)"
+            )),
         }
     }
     pub fn as_str(&self) -> &'static str {
@@ -249,7 +251,10 @@ pub async fn build_engine_memory(
     let store = InMemoryStore::new();
     let nb = Uuid::new_v4();
     let (chunks, texts, id_map) = build_chunks(corpus);
-    let embs = dyn_embedder.embed(&texts).await.map_err(|e| anyhow!("{e}"))?;
+    let embs = dyn_embedder
+        .embed(&texts)
+        .await
+        .map_err(|e| anyhow!("{e}"))?;
     store
         .upsert(nb, &chunks, &embs)
         .await
@@ -274,7 +279,10 @@ pub async fn build_engine_sqlite(
     let store = SqliteStore::open_in_memory(dim).map_err(|e| anyhow!("{e}"))?;
     let nb = Uuid::new_v4();
     let (chunks, texts, id_map) = build_chunks(corpus);
-    let embs = dyn_embedder.embed(&texts).await.map_err(|e| anyhow!("{e}"))?;
+    let embs = dyn_embedder
+        .embed(&texts)
+        .await
+        .map_err(|e| anyhow!("{e}"))?;
     store
         .upsert(nb, &chunks, &embs)
         .await
@@ -302,7 +310,16 @@ pub async fn run_eval<S: VectorStore + Send + Sync>(
     weights: &[f32],
     k: usize,
 ) -> Result<Vec<EvalRow>> {
-    run_eval_inner(ctx, golden, weights, k, None, None, MultiQueryOptions::default()).await
+    run_eval_inner(
+        ctx,
+        golden,
+        weights,
+        k,
+        None,
+        None,
+        MultiQueryOptions::default(),
+    )
+    .await
 }
 
 async fn run_eval_inner<S: VectorStore + Send + Sync>(
@@ -377,7 +394,8 @@ async fn generate_answer<S: VectorStore + Send + Sync>(
         .collect::<Vec<_>>()
         .join("\n");
     let req = LlmRequest {
-        system: "あなたは厳密な参考文献付きアシスタントです。<source>の範囲で答えてください。".into(),
+        system: "あなたは厳密な参考文献付きアシスタントです。<source>の範囲で答えてください。"
+            .into(),
         history: Vec::new(),
         user: format!("質問: {query}\n\n参考:\n{context_block}"),
         max_tokens: 512,
@@ -388,7 +406,11 @@ async fn generate_answer<S: VectorStore + Send + Sync>(
     let cb: Box<dyn FnMut(String) + Send + 'static> = Box::new(move |t: String| {
         buf2.lock().unwrap().push_str(&t);
     });
-    engine.llm.generate_stream(req, cb).await.map_err(|e| anyhow!("{e}"))?;
+    engine
+        .llm
+        .generate_stream(req, cb)
+        .await
+        .map_err(|e| anyhow!("{e}"))?;
     let out = buf.lock().unwrap().clone();
     Ok(out)
 }
@@ -425,14 +447,26 @@ pub async fn run_eval_with_options(
         Backend::Memory => {
             let ctx = build_engine_memory(corpus, opts.embedder.clone()).await?;
             run_eval_inner(
-                &ctx, golden, &opts.weights, opts.k, judge_ref, rewriter_ref, opts.multi,
+                &ctx,
+                golden,
+                &opts.weights,
+                opts.k,
+                judge_ref,
+                rewriter_ref,
+                opts.multi,
             )
             .await
         }
         Backend::Sqlite => {
             let ctx = build_engine_sqlite(corpus, opts.embedder.clone()).await?;
             run_eval_inner(
-                &ctx, golden, &opts.weights, opts.k, judge_ref, rewriter_ref, opts.multi,
+                &ctx,
+                golden,
+                &opts.weights,
+                opts.k,
+                judge_ref,
+                rewriter_ref,
+                opts.multi,
             )
             .await
         }

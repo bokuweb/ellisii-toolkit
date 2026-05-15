@@ -238,8 +238,7 @@ fn contains_article_id(q: &str) -> bool {
         if chars[i] == '第' {
             let mut j = i + 1;
             let mut saw_digit = false;
-            while j < chars.len()
-                && (chars[j].is_ascii_digit() || matches!(chars[j], '０'..='９'))
+            while j < chars.len() && (chars[j].is_ascii_digit() || matches!(chars[j], '０'..='９'))
             {
                 saw_digit = true;
                 j += 1;
@@ -253,7 +252,12 @@ fn contains_article_id(q: &str) -> bool {
     let lower = q.to_ascii_lowercase();
     if let Some(pos) = lower.find("article ") {
         let rest = &lower[pos + "article ".len()..];
-        if rest.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        if rest
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+        {
             return true;
         }
     }
@@ -290,7 +294,11 @@ pub fn parse_intent(text: &str) -> Intent {
             }
         }
     }
-    let kind = match intent_kind.as_deref().map(str::to_ascii_lowercase).as_deref() {
+    let kind = match intent_kind
+        .as_deref()
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
         Some("summary") => "summary",
         Some("lookup") => "lookup",
         Some("compare") => "compare",
@@ -319,9 +327,9 @@ pub fn parse_intent(text: &str) -> Intent {
 
 /// `"all"` / `"n/a"` / 空文字 / 引用符だけ等を `None` に正規化する。
 fn normalize_optional_field(raw: String) -> Option<String> {
-    let trimmed = raw.trim().trim_matches(|c: char| {
-        c == '"' || c == '\'' || c == '`' || c.is_whitespace()
-    });
+    let trimmed = raw
+        .trim()
+        .trim_matches(|c: char| c == '"' || c == '\'' || c == '`' || c.is_whitespace());
     let lower = trimmed.to_ascii_lowercase();
     if trimmed.is_empty()
         || lower == "all"
@@ -526,7 +534,8 @@ mod tests {
     #[async_trait]
     impl IntentClassifier for CountingClassifier {
         async fn classify(&self, _query: &str) -> Result<Intent> {
-            self.calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Ok(self.next.clone())
         }
     }

@@ -18,7 +18,11 @@ mod tests {
 
     #[tokio::test]
     async fn stub_returns_empty_for_any_path() {
-        assert!(StubOcr.ocr_image("/nonexistent.png").await.unwrap().is_empty());
+        assert!(StubOcr
+            .ocr_image("/nonexistent.png")
+            .await
+            .unwrap()
+            .is_empty());
         assert!(StubOcr.ocr_image("").await.unwrap().is_empty());
     }
 

@@ -27,7 +27,10 @@ mod tests {
     use ellisii_llm_core::LlmRequest;
     use std::sync::{Arc, Mutex};
 
-    fn collected() -> (Arc<Mutex<Vec<String>>>, Box<dyn FnMut(String) + Send + 'static>) {
+    fn collected() -> (
+        Arc<Mutex<Vec<String>>>,
+        Box<dyn FnMut(String) + Send + 'static>,
+    ) {
         let buf: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let buf2 = buf.clone();
         let cb: Box<dyn FnMut(String) + Send + 'static> = Box::new(move |t: String| {
@@ -49,7 +52,10 @@ mod tests {
     #[tokio::test]
     async fn echo_emits_prefix_then_words() {
         let (buf, cb) = collected();
-        EchoLlm.generate_stream(req("hello world"), cb).await.unwrap();
+        EchoLlm
+            .generate_stream(req("hello world"), cb)
+            .await
+            .unwrap();
         let tokens = buf.lock().unwrap().clone();
         assert_eq!(tokens.first().map(String::as_str), Some("[stub] "));
         let body: String = tokens[1..].concat();
@@ -67,10 +73,7 @@ mod tests {
     #[tokio::test]
     async fn echo_collapses_whitespace_runs() {
         let (buf, cb) = collected();
-        EchoLlm
-            .generate_stream(req("a   b\tc"), cb)
-            .await
-            .unwrap();
+        EchoLlm.generate_stream(req("a   b\tc"), cb).await.unwrap();
         let body: String = buf.lock().unwrap()[1..].concat();
         assert_eq!(body.trim_end(), "a b c");
     }

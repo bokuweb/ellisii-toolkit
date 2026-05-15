@@ -231,33 +231,12 @@ async fn end_to_end_retrieve_eval_reports_metrics() {
     let g = golden();
     let k = 5;
 
-    let kw_only = eval_with_weights(
-        &engine,
-        nb,
-        &id_map,
-        &g,
-        HybridWeights { semantic: 0.0 },
-        k,
-    )
-    .await;
-    let hybrid = eval_with_weights(
-        &engine,
-        nb,
-        &id_map,
-        &g,
-        HybridWeights { semantic: 0.5 },
-        k,
-    )
-    .await;
-    let vec_only = eval_with_weights(
-        &engine,
-        nb,
-        &id_map,
-        &g,
-        HybridWeights { semantic: 1.0 },
-        k,
-    )
-    .await;
+    let kw_only =
+        eval_with_weights(&engine, nb, &id_map, &g, HybridWeights { semantic: 0.0 }, k).await;
+    let hybrid =
+        eval_with_weights(&engine, nb, &id_map, &g, HybridWeights { semantic: 0.5 }, k).await;
+    let vec_only =
+        eval_with_weights(&engine, nb, &id_map, &g, HybridWeights { semantic: 1.0 }, k).await;
 
     println!(
         "\n=== RAG retrieval eval (k={k}, n_queries={}) ===\n\
@@ -266,15 +245,30 @@ async fn end_to_end_retrieve_eval_reports_metrics() {
          hybrid 0.5    {:>7.3}   {:>5.3}   {:>6.3}   {:>5.3}\n\
          vector-only   {:>7.3}   {:>5.3}   {:>6.3}   {:>5.3}\n",
         g.items.len(),
-        kw_only.recall_at_k, kw_only.hit_at_k, kw_only.ndcg_at_k, kw_only.mrr,
-        hybrid.recall_at_k, hybrid.hit_at_k, hybrid.ndcg_at_k, hybrid.mrr,
-        vec_only.recall_at_k, vec_only.hit_at_k, vec_only.ndcg_at_k, vec_only.mrr,
+        kw_only.recall_at_k,
+        kw_only.hit_at_k,
+        kw_only.ndcg_at_k,
+        kw_only.mrr,
+        hybrid.recall_at_k,
+        hybrid.hit_at_k,
+        hybrid.ndcg_at_k,
+        hybrid.mrr,
+        vec_only.recall_at_k,
+        vec_only.hit_at_k,
+        vec_only.ndcg_at_k,
+        vec_only.mrr,
     );
 
     // Sanity: vector / hybrid 経路は corpus 内に正解 chunk があるので必ずヒットする。
     // keyword-only は store-memory が naive なため 0 でも許容 (上のモジュールコメント参照)。
-    assert!(vec_only.hit_at_k > 0.0, "vector-only should hit at least one query");
-    assert!(hybrid.hit_at_k > 0.0, "hybrid should hit at least one query");
+    assert!(
+        vec_only.hit_at_k > 0.0,
+        "vector-only should hit at least one query"
+    );
+    assert!(
+        hybrid.hit_at_k > 0.0,
+        "hybrid should hit at least one query"
+    );
 
     // リグレッション保証: hybrid は vector-only より recall/MRR が劣化しない。
     // (keyword 側が naive で 0 になるので、最低でも vector に揃うことを期待)

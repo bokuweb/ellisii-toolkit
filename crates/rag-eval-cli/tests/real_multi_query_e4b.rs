@@ -120,11 +120,15 @@ async fn measure_domain(domain: &str, embedder_dir: &PathBuf, e4b_path: &PathBuf
     };
 
     let t0 = std::time::Instant::now();
-    let base_rows = run_eval_with_options(&baseline, &corpus, &golden).await.unwrap();
+    let base_rows = run_eval_with_options(&baseline, &corpus, &golden)
+        .await
+        .unwrap();
     let dt_base = t0.elapsed();
 
     let t1 = std::time::Instant::now();
-    let multi_rows = run_eval_with_options(&multi, &corpus, &golden).await.unwrap();
+    let multi_rows = run_eval_with_options(&multi, &corpus, &golden)
+        .await
+        .unwrap();
     let dt_multi = t1.elapsed();
 
     let b = &base_rows[0].summary;
@@ -133,11 +137,19 @@ async fn measure_domain(domain: &str, embedder_dir: &PathBuf, e4b_path: &PathBuf
     println!("\n=== {domain} (k=10, semantic=0.75, queries={queries}) ===");
     println!(
         "  baseline       recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        b.recall_at_k, b.hit_at_k, b.ndcg_at_k, b.mrr, dt_base.as_secs_f32()
+        b.recall_at_k,
+        b.hit_at_k,
+        b.ndcg_at_k,
+        b.mrr,
+        dt_base.as_secs_f32()
     );
     println!(
         "  multi-query    recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        m.recall_at_k, m.hit_at_k, m.ndcg_at_k, m.mrr, dt_multi.as_secs_f32()
+        m.recall_at_k,
+        m.hit_at_k,
+        m.ndcg_at_k,
+        m.mrr,
+        dt_multi.as_secs_f32()
     );
     println!(
         "  Δ (multi - base) recall={:+.3}  hit={:+.3}  nDCG={:+.3}  MRR={:+.3}",
@@ -186,7 +198,11 @@ async fn measure_civil_law_hard_with_multi_expand() {
 
     let (corpus, golden) = load_fixture("jp-civil-law-hard");
     let queries = golden.items.len();
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
 
     let cfg = LlamaConfig::new(e4b_path, ModelFamily::Gemma4);
     let llm = LlamaCppBackend::load(cfg).expect("load gemma-4-E4B");
@@ -222,16 +238,22 @@ async fn measure_civil_law_hard_with_multi_expand() {
         weights: vec![0.75],
         k: 10,
         judge: None,
-        rewriter: Some(Arc::new(MultiExpandRewriter::new(SharedLlm(llm_arc.clone())))),
+        rewriter: Some(Arc::new(MultiExpandRewriter::new(SharedLlm(
+            llm_arc.clone(),
+        )))),
         multi: multi_opts,
     };
 
     let t0 = std::time::Instant::now();
-    let base_rows = run_eval_with_options(&baseline, &corpus, &golden).await.unwrap();
+    let base_rows = run_eval_with_options(&baseline, &corpus, &golden)
+        .await
+        .unwrap();
     let dt_base = t0.elapsed();
 
     let t1 = std::time::Instant::now();
-    let multi_rows = run_eval_with_options(&multi, &corpus, &golden).await.unwrap();
+    let multi_rows = run_eval_with_options(&multi, &corpus, &golden)
+        .await
+        .unwrap();
     let dt_multi = t1.elapsed();
 
     let b = &base_rows[0].summary;
@@ -239,11 +261,19 @@ async fn measure_civil_law_hard_with_multi_expand() {
     println!("\n=== jp-civil-law-hard MultiExpand (k=10, semantic=0.75, queries={queries}) ===");
     println!(
         "  baseline       recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        b.recall_at_k, b.hit_at_k, b.ndcg_at_k, b.mrr, dt_base.as_secs_f32()
+        b.recall_at_k,
+        b.hit_at_k,
+        b.ndcg_at_k,
+        b.mrr,
+        dt_base.as_secs_f32()
     );
     println!(
         "  multi-expand   recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-        m.recall_at_k, m.hit_at_k, m.ndcg_at_k, m.mrr, dt_multi.as_secs_f32()
+        m.recall_at_k,
+        m.hit_at_k,
+        m.ndcg_at_k,
+        m.mrr,
+        dt_multi.as_secs_f32()
     );
     println!(
         "  Δ (multi - base) recall={:+.3}  hit={:+.3}  nDCG={:+.3}  MRR={:+.3}",
@@ -266,7 +296,11 @@ async fn measure_multihop_with_multi_expand() {
 
     let (corpus, golden) = load_fixture("jp-multihop");
     let queries = golden.items.len();
-    let embedder = EmbedderKind::StaticJp { model_dir: static_jp }.build().unwrap();
+    let embedder = EmbedderKind::StaticJp {
+        model_dir: static_jp,
+    }
+    .build()
+    .unwrap();
 
     let cfg = LlamaConfig::new(e4b_path, ModelFamily::Gemma4);
     let llm = LlamaCppBackend::load(cfg).expect("load gemma-4-E4B");
@@ -305,27 +339,43 @@ async fn measure_multihop_with_multi_expand() {
         weights: vec![0.75],
         k,
         judge: None,
-        rewriter: Some(Arc::new(MultiExpandRewriter::new(SharedLlm(llm_arc.clone())))),
+        rewriter: Some(Arc::new(MultiExpandRewriter::new(SharedLlm(
+            llm_arc.clone(),
+        )))),
         multi: multi_opts_c,
     };
 
     println!("\n=== jp-multihop MultiExpand (semantic=0.75, queries={queries}) ===");
     for k in [2usize, 5, 10] {
         let t0 = std::time::Instant::now();
-        let base_rows = run_eval_with_options(&mk_baseline(k), &corpus, &golden).await.unwrap();
+        let base_rows = run_eval_with_options(&mk_baseline(k), &corpus, &golden)
+            .await
+            .unwrap();
         let dt_base = t0.elapsed();
         let t1 = std::time::Instant::now();
-        let multi_rows = run_eval_with_options(&mk_multi(k), &corpus, &golden).await.unwrap();
+        let multi_rows = run_eval_with_options(&mk_multi(k), &corpus, &golden)
+            .await
+            .unwrap();
         let dt_multi = t1.elapsed();
         let b = &base_rows[0].summary;
         let m = &multi_rows[0].summary;
         println!(
             "  k={:<2} baseline    recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-            k, b.recall_at_k, b.hit_at_k, b.ndcg_at_k, b.mrr, dt_base.as_secs_f32()
+            k,
+            b.recall_at_k,
+            b.hit_at_k,
+            b.ndcg_at_k,
+            b.mrr,
+            dt_base.as_secs_f32()
         );
         println!(
             "  k={:<2} multi-exp   recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}  ({:.1}s)",
-            k, m.recall_at_k, m.hit_at_k, m.ndcg_at_k, m.mrr, dt_multi.as_secs_f32()
+            k,
+            m.recall_at_k,
+            m.hit_at_k,
+            m.ndcg_at_k,
+            m.mrr,
+            dt_multi.as_secs_f32()
         );
         println!(
             "  k={:<2} Δ           recall={:+.3}  hit={:+.3}  nDCG={:+.3}  MRR={:+.3}",

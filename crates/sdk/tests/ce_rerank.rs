@@ -221,7 +221,9 @@ async fn ce_rerank_without_compressor_is_no_op() {
         id: Uuid::new_v4(),
         source_id: Uuid::nil(),
         ord: 0,
-        text: "あ チャンク。noise filter を通すために本文を追加する必要があるので長めに書いておく。".into(),
+        text:
+            "あ チャンク。noise filter を通すために本文を追加する必要があるので長めに書いておく。"
+                .into(),
         heading_path: vec![],
         page: None,
         bbox: None,

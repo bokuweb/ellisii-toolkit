@@ -153,9 +153,7 @@ async fn build_ellisii(corpus: &[CorpusEntry]) -> (Arc<Ellisii>, HashMap<Uuid, S
     (Arc::new(ellisii), id_map)
 }
 
-async fn measure_hit_mrr_at_5(
-    name: &str,
-) -> (f32, f32) {
+async fn measure_hit_mrr_at_5(name: &str) -> (f32, f32) {
     let (corpus, golden) = load_fixture(name);
     let (ellisii, id_map) = build_ellisii(&corpus).await;
     let mut pairs: Vec<(Vec<String>, Vec<String>)> = Vec::new();
@@ -174,7 +172,9 @@ async fn measure_hit_mrr_at_5(
             .await
             .expect("search");
         pairs.push((
-            hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect(),
+            hits.iter()
+                .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+                .collect(),
             item.relevant.clone(),
         ));
     }
@@ -215,9 +215,7 @@ async fn fixture_recall_does_not_regress() {
             name, hit, hit_floor, mrr, mrr_floor
         );
         if hit + 1e-3 < *hit_floor {
-            failures.push(format!(
-                "{name}: hit@5={hit:.3} below floor {hit_floor:.2}"
-            ));
+            failures.push(format!("{name}: hit@5={hit:.3} below floor {hit_floor:.2}"));
         }
         if mrr + 1e-3 < *mrr_floor {
             failures.push(format!("{name}: mrr@5={mrr:.3} below floor {mrr_floor:.2}"));

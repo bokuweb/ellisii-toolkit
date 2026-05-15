@@ -31,9 +31,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     eprintln!("indexing {dir} → {db_path}");
-    let report = ellisii
-        .index_dir(&dir, IndexOptions::default())
-        .await?;
+    let report = ellisii.index_dir(&dir, IndexOptions::default()).await?;
     eprintln!(
         "done: ingested={} chunks={} skipped={} failed={}",
         report.ingested, report.total_chunks, report.skipped, report.failed

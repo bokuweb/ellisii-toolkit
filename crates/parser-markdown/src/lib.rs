@@ -107,7 +107,10 @@ mod tests {
     fn going_up_levels_pops_deeper_headings() {
         let blocks = parse_str("# A\n## B\ntext\n# C\nbody");
         assert_eq!(blocks.len(), 2);
-        assert_eq!(blocks[0].heading_path, vec!["A".to_string(), "B".to_string()]);
+        assert_eq!(
+            blocks[0].heading_path,
+            vec!["A".to_string(), "B".to_string()]
+        );
         assert_eq!(blocks[1].heading_path, vec!["C".to_string()]);
     }
 

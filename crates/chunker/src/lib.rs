@@ -181,13 +181,7 @@ pub fn chunk(doc: &ParsedDocument, source_id: Uuid, cfg: ChunkConfig) -> Vec<Chu
         split_english_contract_articles(&joined)
     };
     if global_eng.len() >= 3 {
-        return chunk_law_articles(
-            global_eng,
-            &doc.blocks,
-            &block_positions,
-            source_id,
-            &cfg,
-        );
+        return chunk_law_articles(global_eng, &doc.blocks, &block_positions, source_id, &cfg);
     }
 
     // 通常 (block ごとの recursive split) パス
@@ -283,8 +277,10 @@ fn maybe_inject_caption(text: String, heading_path: &[String], enabled: bool) ->
     if trimmed_heading.is_empty() {
         return text;
     }
-    if trimmed_heading.contains('(') || trimmed_heading.contains(')')
-        || trimmed_heading.contains('(') || trimmed_heading.contains(')')
+    if trimmed_heading.contains('(')
+        || trimmed_heading.contains(')')
+        || trimmed_heading.contains('(')
+        || trimmed_heading.contains(')')
     {
         return text;
     }
@@ -932,8 +928,7 @@ mod tests {
         let md_doc = ParsedDocument {
             kind: SourceKind::Markdown,
             blocks: vec![ParsedBlock {
-                text: "Markdown 専用 chunker が呼ばれる経路の動作確認に使う本文です。"
-                    .into(),
+                text: "Markdown 専用 chunker が呼ばれる経路の動作確認に使う本文です。".into(),
                 heading_path: vec!["x".into()],
                 page: None,
                 bbox: None,
@@ -955,8 +950,16 @@ mod tests {
         assert_eq!(default_calls.load(Ordering::SeqCst), 0);
 
         let _ = dispatch.chunk(&txt_doc, Uuid::new_v4());
-        assert_eq!(md_calls.load(Ordering::SeqCst), 1, "MD chunker 再呼出は無し");
-        assert_eq!(default_calls.load(Ordering::SeqCst), 1, "Text は default に");
+        assert_eq!(
+            md_calls.load(Ordering::SeqCst),
+            1,
+            "MD chunker 再呼出は無し"
+        );
+        assert_eq!(
+            default_calls.load(Ordering::SeqCst),
+            1,
+            "Text は default に"
+        );
     }
 
     #[test]
@@ -967,7 +970,9 @@ mod tests {
         let doc = ParsedDocument {
             kind: SourceKind::Markdown,
             blocks: vec![ParsedBlock {
-                text: "本文。caption がチャンク先頭に prepend される想定。25 文字以上の内容語にする。".into(),
+                text:
+                    "本文。caption がチャンク先頭に prepend される想定。25 文字以上の内容語にする。"
+                        .into(),
                 heading_path: vec!["セクション題目".into()],
                 page: None,
                 bbox: None,
@@ -1044,18 +1049,24 @@ mod tests {
         let arts = split_japanese_law_articles(text);
         let bodies: Vec<&str> = arts.iter().map(|a| a.text.as_str()).collect();
         assert!(
-            bodies.iter().any(|b| b.contains("（秘密保持）") && b.contains("第八条")),
+            bodies
+                .iter()
+                .any(|b| b.contains("（秘密保持）") && b.contains("第八条")),
             "第八条 chunk should contain its preceding （秘密保持） title; got {:?}",
             bodies
         );
         assert!(
-            bodies.iter().any(|b| b.contains("（損害賠償）") && b.contains("第九条")),
+            bodies
+                .iter()
+                .any(|b| b.contains("（損害賠償）") && b.contains("第九条")),
             "第九条 chunk should contain its preceding （損害賠償） title; got {:?}",
             bodies
         );
         // 半角括弧版も同様にくっつくこと
         assert!(
-            bodies.iter().any(|b| b.contains("(契約期間)") && b.contains("第十条")),
+            bodies
+                .iter()
+                .any(|b| b.contains("(契約期間)") && b.contains("第十条")),
             "第十条 chunk should contain its preceding (契約期間) title; got {:?}",
             bodies
         );
@@ -1072,12 +1083,19 @@ ARTICLE 3. Confidentiality
 Each Party shall keep confidential all Confidential Information.
 ";
         let arts = split_english_contract_articles(text);
-        assert!(arts.len() >= 3, "expected >=3 english articles, got {}", arts.len());
+        assert!(
+            arts.len() >= 3,
+            "expected >=3 english articles, got {}",
+            arts.len()
+        );
         let labels: Vec<&str> = arts
             .iter()
             .filter_map(|a| a.article_label.as_deref())
             .collect();
-        assert!(labels.iter().any(|l| l.starts_with("ARTICLE 1")), "labels: {labels:?}");
+        assert!(
+            labels.iter().any(|l| l.starts_with("ARTICLE 1")),
+            "labels: {labels:?}"
+        );
         assert!(labels.iter().any(|l| l.starts_with("ARTICLE 2")));
         assert!(labels.iter().any(|l| l.starts_with("ARTICLE 3")));
     }
@@ -1100,7 +1118,10 @@ Notices shall be in writing.
             .iter()
             .filter_map(|a| a.article_label.as_deref())
             .collect();
-        assert!(labels.iter().any(|l| l.contains("1.1")), "labels: {labels:?}");
+        assert!(
+            labels.iter().any(|l| l.contains("1.1")),
+            "labels: {labels:?}"
+        );
         assert!(labels.iter().any(|l| l.contains("2.1")));
     }
 
@@ -1219,9 +1240,7 @@ This Agreement shall be governed by Delaware law.
     fn tech_book_decimal_section_numbers_do_not_trigger_article_mode() {
         let blocks: Vec<ParsedBlock> = (1..=10)
             .map(|i| ParsedBlock {
-                text: format!(
-                    "1.5.{i} 交差テーブルの他のメリット\nなんらかの本文 {i}。"
-                ),
+                text: format!("1.5.{i} 交差テーブルの他のメリット\nなんらかの本文 {i}。"),
                 heading_path: vec![format!("Page {i}")],
                 page: Some(i as u32),
                 bbox: None,
@@ -1278,7 +1297,11 @@ This Agreement shall be governed by Delaware law.
                 c.heading_path
             );
             // page も block ごとに伝播
-            assert!(c.page.is_some(), "chunk page should be set, got {:?}", c.page);
+            assert!(
+                c.page.is_some(),
+                "chunk page should be set, got {:?}",
+                c.page
+            );
         }
     }
 
@@ -1427,7 +1450,10 @@ This Agreement shall be governed by Delaware law.
                 id_chapter_seen = true;
             }
         }
-        assert!(id_chapter_seen, "expected at least one IDリクワイアド body chunk");
+        assert!(
+            id_chapter_seen,
+            "expected at least one IDリクワイアド body chunk"
+        );
     }
 
     /// Regression guard: 同一 ParsedBlock 内に **2 つ以上** の章タイトルが
@@ -1466,14 +1492,12 @@ This Agreement shall be governed by Delaware law.
         for c in &chunks {
             let in_three = c.heading_path.iter().any(|h| h.contains("3章"));
             let in_four = c.heading_path.iter().any(|h| h.contains("4章"));
-            if c.text.contains("ID列の安易な追加")
-                || c.text.contains("結合する際に留意")
+            if c.text.contains("ID列の安易な追加") || c.text.contains("結合する際に留意")
             {
                 assert!(in_three && !in_four, "got {:?}: {}", c.heading_path, c.text);
                 three_seen = true;
             }
-            if c.text.contains("外部キー制約を意図的")
-                || c.text.contains("データベースが整合性")
+            if c.text.contains("外部キー制約を意図的") || c.text.contains("データベースが整合性")
             {
                 assert!(in_four && !in_three, "got {:?}: {}", c.heading_path, c.text);
                 four_seen = true;
@@ -1500,8 +1524,7 @@ This Agreement shall be governed by Delaware law.
                 bbox: None,
             },
             ParsedBlock {
-                text: "本文の続きです。さらに続きます。複合キーや外部キーについて。"
-                    .into(),
+                text: "本文の続きです。さらに続きます。複合キーや外部キーについて。".into(),
                 heading_path: vec!["Page 69".into()],
                 page: Some(69),
                 bbox: None,
@@ -1520,11 +1543,7 @@ This Agreement shall be governed by Delaware law.
                 c.heading_path
             );
             // 二重スタック (= "3章 ..." が heading_path に複数本) は許さない
-            let three_count = c
-                .heading_path
-                .iter()
-                .filter(|h| h.contains("3章"))
-                .count();
+            let three_count = c.heading_path.iter().filter(|h| h.contains("3章")).count();
             assert_eq!(three_count, 1, "duplicate 3章 in {:?}", c.heading_path);
         }
     }
@@ -1597,7 +1616,8 @@ This Agreement shall be governed by Delaware law.
         let chunks = chunk(&doc, Uuid::new_v4(), ChunkConfig::default());
         let mut body_seen = false;
         for c in &chunks {
-            if c.text.contains("並列化の基本概念") || c.text.contains("並列度の選択") {
+            if c.text.contains("並列化の基本概念") || c.text.contains("並列度の選択")
+            {
                 assert!(
                     c.heading_path.iter().any(|h| h.contains("第三章")),
                     "並列化 body must carry '第三章' heading, got {:?}",
@@ -1705,8 +1725,7 @@ This Agreement shall be governed by Delaware law.
             assert!(c.page.is_some(), "chunk page=None: {:?}", c);
         }
         // ページ番号は 1〜3 のいずれか
-        let pages: std::collections::HashSet<u32> =
-            chunks.iter().filter_map(|c| c.page).collect();
+        let pages: std::collections::HashSet<u32> = chunks.iter().filter_map(|c| c.page).collect();
         assert!(pages.contains(&1), "pages: {:?}", pages);
     }
 
@@ -1719,10 +1738,7 @@ This Agreement shall be governed by Delaware law.
     fn one_page_paragraph_yields_few_chunks() {
         let line = "再帰的な関連を持つデータは珍しくはなく、ツリー状の構造や階層的な構造で組織化されることが多い。";
         // ~50 chars × 30 行 ≒ 1500 chars/page (実 PDF 1 ページぶんに相当)
-        let page_text = (0..30)
-            .map(|_| line)
-            .collect::<Vec<_>>()
-            .join("\n");
+        let page_text = (0..30).map(|_| line).collect::<Vec<_>>().join("\n");
         let doc = ParsedDocument {
             kind: SourceKind::Pdf,
             blocks: vec![ParsedBlock {
@@ -1741,7 +1757,11 @@ This Agreement shall be governed by Delaware law.
             "expected <=8 chunks for ~1500-char page, got {}",
             chunks.len()
         );
-        assert!(chunks.len() >= 2, "expected >=2 chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() >= 2,
+            "expected >=2 chunks, got {}",
+            chunks.len()
+        );
     }
 
     // ─── synthesize_caption_from_heading ──────────────────────────────────
@@ -1814,7 +1834,7 @@ This Agreement shall be governed by Delaware law.
     #[test]
     fn synthesize_caption_skips_empty_or_paren_heading() {
         // 空 heading_path → no-op
-        let body = "本文。" .repeat(30);
+        let body = "本文。".repeat(30);
         let doc = ParsedDocument {
             kind: SourceKind::Markdown,
             blocks: vec![ParsedBlock {
@@ -1870,7 +1890,14 @@ This Agreement shall be governed by Delaware law.
             "already-prefixed text → no-op"
         );
         assert_eq!(
-            maybe_inject_caption("body".into(), &["A", "(weird)"].iter().map(|s| s.to_string()).collect::<Vec<_>>(), true),
+            maybe_inject_caption(
+                "body".into(),
+                &["A", "(weird)"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>(),
+                true
+            ),
             "body",
             "heading with parens → no-op (avoid broken caption)"
         );

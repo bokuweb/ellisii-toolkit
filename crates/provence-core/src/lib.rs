@@ -181,7 +181,11 @@ mod tests {
     }
 
     fn s(text: &str, score: f32, kept: bool) -> ScoredSentence {
-        ScoredSentence { text: text.into(), score, kept }
+        ScoredSentence {
+            text: text.into(),
+            score,
+            kept,
+        }
     }
 
     #[test]
@@ -195,7 +199,11 @@ mod tests {
             s("e", 0.15, false),
         ];
         apply_floor(&mut v, 3, 0.0);
-        let kept: Vec<_> = v.iter().filter(|x| x.kept).map(|x| x.text.clone()).collect();
+        let kept: Vec<_> = v
+            .iter()
+            .filter(|x| x.kept)
+            .map(|x| x.text.clone())
+            .collect();
         assert_eq!(kept.len(), 3);
         // 上位スコアは c(0.18), e(0.15), a(0.10)
         assert!(kept.contains(&"c".to_string()));
@@ -205,11 +213,7 @@ mod tests {
 
     #[test]
     fn apply_floor_keeps_existing_kept_intact() {
-        let mut v = vec![
-            s("a", 0.05, false),
-            s("b", 0.99, true),
-            s("c", 0.04, false),
-        ];
+        let mut v = vec![s("a", 0.05, false), s("b", 0.99, true), s("c", 0.04, false)];
         apply_floor(&mut v, 2, 0.0);
         // b は既に kept、追加で 1 件だけ昇格する (上位は a)
         assert!(v[1].kept);

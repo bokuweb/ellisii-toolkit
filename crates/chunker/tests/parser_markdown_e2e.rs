@@ -49,7 +49,10 @@ B木はディスク上のデータ構造で、データベース管理システ�
         blocks,
     };
     let chunks = chunk(&doc, Uuid::nil(), ChunkConfig::default());
-    assert!(!chunks.is_empty(), "chunker should yield at least one chunk");
+    assert!(
+        !chunks.is_empty(),
+        "chunker should yield at least one chunk"
+    );
 
     // 不変条件: chunk の heading_path[-1] は section title (H2 = ACID / B木)
     // ここが落ちると Run 28 で確認した「heading rerank フォールバックの素材」が

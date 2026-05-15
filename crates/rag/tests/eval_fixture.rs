@@ -16,7 +16,10 @@ fn fixture_parses_and_has_items() {
     assert!(set.items.len() >= 3);
     for item in &set.items {
         assert!(!item.query.is_empty());
-        assert!(!item.relevant.is_empty(), "every golden must list ≥1 relevant id");
+        assert!(
+            !item.relevant.is_empty(),
+            "every golden must list ≥1 relevant id"
+        );
     }
 }
 

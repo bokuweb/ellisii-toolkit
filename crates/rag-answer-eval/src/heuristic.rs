@@ -87,7 +87,10 @@ impl AnswerJudge for TokenOverlapJudge {
         for c in input.contexts {
             ctx_grams.extend(bigrams(c, self.min_chars));
         }
-        let hit = answer_grams.iter().filter(|g| ctx_grams.contains(g)).count();
+        let hit = answer_grams
+            .iter()
+            .filter(|g| ctx_grams.contains(g))
+            .count();
         let total = answer_grams.len();
         let score = hit as f32 / total as f32;
         Ok(FaithfulnessScore {
@@ -114,8 +117,28 @@ fn bigrams(s: &str, min_chars: usize) -> HashSet<(char, char)> {
 fn is_skip_punct(c: char) -> bool {
     matches!(
         c,
-        '、' | '。' | '・' | '「' | '」' | '『' | '』' | '（' | '）' | '【' | '】'
-            | ',' | '.' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']' | '"' | '\''
+        '、' | '。'
+            | '・'
+            | '「'
+            | '」'
+            | '『'
+            | '』'
+            | '（'
+            | '）'
+            | '【'
+            | '】'
+            | ','
+            | '.'
+            | ';'
+            | ':'
+            | '!'
+            | '?'
+            | '('
+            | ')'
+            | '['
+            | ']'
+            | '"'
+            | '\''
     )
 }
 
@@ -180,7 +203,11 @@ mod tests {
         };
         let s = j.judge_faithfulness(&input).await.unwrap();
         // refusal exemption は適用されず、通常 bigram で低スコア
-        assert!(s.score < 0.5, "long answer should not get refusal exemption (got {})", s.score);
+        assert!(
+            s.score < 0.5,
+            "long answer should not get refusal exemption (got {})",
+            s.score
+        );
     }
 
     #[tokio::test]

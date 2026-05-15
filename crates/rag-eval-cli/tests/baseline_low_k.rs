@@ -46,9 +46,7 @@ async fn measure_at_k(domain: &str, embedder_dir: &PathBuf) {
     let (corpus, golden) = load_fixture(domain);
     let queries = golden.items.len();
     println!("\n=== {domain} (semantic=0.75, queries={queries}) ===");
-    println!(
-        "  k    recall  hit    nDCG   MRR     headroom"
-    );
+    println!("  k    recall  hit    nDCG   MRR     headroom");
     for k in [3usize, 5, 10] {
         let embedder = EmbedderKind::StaticJp {
             model_dir: embedder_dir.clone(),
@@ -64,9 +62,15 @@ async fn measure_at_k(domain: &str, embedder_dir: &PathBuf) {
             rewriter: None,
             multi: MultiQueryOptions::default(),
         };
-        let rows = run_eval_with_options(&opts, &corpus, &golden).await.unwrap();
+        let rows = run_eval_with_options(&opts, &corpus, &golden)
+            .await
+            .unwrap();
         let s = &rows[0].summary;
-        let headroom = if s.recall_at_k >= 0.999 { "saturated" } else { "ROOM" };
+        let headroom = if s.recall_at_k >= 0.999 {
+            "saturated"
+        } else {
+            "ROOM"
+        };
         println!(
             "  {:<4} {:.3}   {:.3}  {:.3}  {:.3}   {}",
             k, s.recall_at_k, s.hit_at_k, s.ndcg_at_k, s.mrr, headroom

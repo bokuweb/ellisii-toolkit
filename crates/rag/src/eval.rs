@@ -55,7 +55,10 @@ pub fn recall_at_k(predicted: &[String], relevant: &[String], k: usize) -> f32 {
     } else {
         predicted
     };
-    let hit = relevant.iter().filter(|r| head.iter().any(|p| p == *r)).count();
+    let hit = relevant
+        .iter()
+        .filter(|r| head.iter().any(|p| p == *r))
+        .count();
     hit as f32 / relevant.len() as f32
 }
 

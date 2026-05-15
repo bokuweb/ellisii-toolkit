@@ -245,7 +245,10 @@ mod tests {
     #[test]
     fn homogeneous_cpu_returns_none() {
         // 全コア class=0 (例: 旧世代 Intel / AMD Ryzen): P/E 区別が無い
-        assert_eq!(count_performance_cores(&cores(&[0, 0, 0, 0, 0, 0, 0, 0])), None);
+        assert_eq!(
+            count_performance_cores(&cores(&[0, 0, 0, 0, 0, 0, 0, 0])),
+            None
+        );
         // 全コア class=1 でも同様
         assert_eq!(count_performance_cores(&cores(&[1, 1, 1, 1])), None);
     }
@@ -260,8 +263,18 @@ mod tests {
     #[test]
     fn raptor_lake_13900k_topology_returns_8_pcores() {
         // 13900K: P コア 8 (class=1) + E コア 16 (class=0)
-        let mut topology = vec![CoreInfo { efficiency_class: 1 }; 8];
-        topology.extend(vec![CoreInfo { efficiency_class: 0 }; 16]);
+        let mut topology = vec![
+            CoreInfo {
+                efficiency_class: 1
+            };
+            8
+        ];
+        topology.extend(vec![
+            CoreInfo {
+                efficiency_class: 0
+            };
+            16
+        ]);
         assert_eq!(count_performance_cores(&topology), Some(8));
     }
 
@@ -327,7 +340,10 @@ mod tests {
     fn total_physical_returns_none_on_homogeneous() {
         // 旧 Intel / AMD Ryzen のホモジニアス CPU は None
         // (llama.cpp 既定に倒す)
-        assert_eq!(count_total_physical_cores(&cores(&[0, 0, 0, 0, 0, 0, 0, 0])), None);
+        assert_eq!(
+            count_total_physical_cores(&cores(&[0, 0, 0, 0, 0, 0, 0, 0])),
+            None
+        );
         assert_eq!(count_total_physical_cores(&cores(&[1, 1, 1, 1])), None);
     }
 
@@ -345,13 +361,19 @@ mod tests {
 
     #[test]
     fn resolve_batch_env_override_wins() {
-        assert_eq!(resolve_n_threads_batch(Some("16"), true, Some(12)), Some(16));
+        assert_eq!(
+            resolve_n_threads_batch(Some("16"), true, Some(12)),
+            Some(16)
+        );
         assert_eq!(resolve_n_threads_batch(Some("16"), false, None), Some(16));
     }
 
     #[test]
     fn resolve_batch_invalid_env_falls_through() {
-        assert_eq!(resolve_n_threads_batch(Some("garbage"), true, Some(12)), Some(12));
+        assert_eq!(
+            resolve_n_threads_batch(Some("garbage"), true, Some(12)),
+            Some(12)
+        );
         assert_eq!(resolve_n_threads_batch(Some("0"), true, Some(12)), Some(12));
     }
 

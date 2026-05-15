@@ -27,10 +27,10 @@
 #![cfg(feature = "onnx")]
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::time::Duration;
 use ellisii_ocr::{NdlocrBackend, OcrBackend, OcrConfig};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 fn default_model_dir() -> PathBuf {
     if let Ok(d) = std::env::var("ELLISII_BENCH_MODEL_DIR") {
@@ -154,9 +154,7 @@ fn ocr_benches(c: &mut Criterion) {
                     for p in pngs.iter().take(n) {
                         let backend = backend.clone();
                         let p = p.to_string_lossy().to_string();
-                        joins.push(tokio::spawn(
-                            async move { backend.ocr_image(&p).await },
-                        ));
+                        joins.push(tokio::spawn(async move { backend.ocr_image(&p).await }));
                     }
                     for j in joins {
                         let _ = j.await;

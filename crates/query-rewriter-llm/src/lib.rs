@@ -143,7 +143,9 @@ pub fn parse_numbered_list(text: &str) -> Vec<String> {
         }
         let stripped = strip_list_prefix(line);
         let Some(s) = stripped else { continue };
-        let cleaned = s.trim().trim_matches(|c: char| c == '"' || c == '「' || c == '」' || c == '『' || c == '』');
+        let cleaned = s
+            .trim()
+            .trim_matches(|c: char| c == '"' || c == '「' || c == '」' || c == '『' || c == '』');
         if cleaned.is_empty() {
             continue;
         }
@@ -270,7 +272,11 @@ mod tests {
             .unwrap();
         assert!(!r.variants.is_empty());
 
-        let req = captured.lock().unwrap().clone().expect("LLM was not called");
+        let req = captured
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("LLM was not called");
         assert!(
             req.system.contains("見出し") && req.system.contains("優先"),
             "system prompt missing caption-hint instruction: {}",
@@ -295,9 +301,21 @@ mod tests {
             .rewrite("foo", 2)
             .await
             .unwrap();
-        let req = captured.lock().unwrap().clone().expect("LLM was not called");
-        assert!(!req.system.contains("見出し"), "unexpected hint line in system: {}", req.system);
-        assert!(!req.user.contains("資料中の主な見出し"), "unexpected hint block in user: {}", req.user);
+        let req = captured
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("LLM was not called");
+        assert!(
+            !req.system.contains("見出し"),
+            "unexpected hint line in system: {}",
+            req.system
+        );
+        assert!(
+            !req.user.contains("資料中の主な見出し"),
+            "unexpected hint block in user: {}",
+            req.user
+        );
     }
 
     #[test]
@@ -313,8 +331,12 @@ mod tests {
     #[test]
     fn caption_hints_drops_blank_entries() {
         let llm = ScriptedLlm { out: "1. x".into() };
-        let r = LlmRewriter::new(llm)
-            .with_caption_hints(vec!["a".into(), "  ".into(), "".into(), "b".into()]);
+        let r = LlmRewriter::new(llm).with_caption_hints(vec![
+            "a".into(),
+            "  ".into(),
+            "".into(),
+            "b".into(),
+        ]);
         assert_eq!(r.caption_hints_len(), 2);
     }
 
@@ -341,9 +363,7 @@ mod tests {
 
     #[tokio::test]
     async fn llm_rewriter_empty_query_returns_passthrough() {
-        let llm = ScriptedLlm {
-            out: "1. x".into(),
-        };
+        let llm = ScriptedLlm { out: "1. x".into() };
         let r = LlmRewriter::new(llm).rewrite("   ", 3).await.unwrap();
         assert_eq!(r, RewrittenQueries::just("   "));
     }

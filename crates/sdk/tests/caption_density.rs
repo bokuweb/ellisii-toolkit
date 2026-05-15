@@ -117,6 +117,9 @@ async fn density_is_per_notebook() {
     let cs2 = vec![chunk("第1条 本文"), chunk("第2条 本文")];
     let texts2: Vec<String> = cs2.iter().map(|c| c.text.clone()).collect();
     let embs2 = e2.embedder().embed(&texts2).await.unwrap();
-    e2.store().upsert(nb_no_caption, &cs2, &embs2).await.unwrap();
+    e2.store()
+        .upsert(nb_no_caption, &cs2, &embs2)
+        .await
+        .unwrap();
     assert!(e2.caption_density().await.unwrap() < 1e-6);
 }

@@ -53,10 +53,11 @@ async fn index_dir_then_search_finds_indexed_text() {
 
     assert_eq!(report.ingested, 3, "3 ファイルが取り込まれているはず");
     assert!(report.total_chunks >= 3);
-    assert!(events.lock().unwrap().iter().any(|e| matches!(
-        e,
-        IndexEvent::Ingested { .. }
-    )));
+    assert!(events
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|e| matches!(e, IndexEvent::Ingested { .. })));
 
     let hits = ellisii
         .search(
@@ -296,11 +297,7 @@ async fn ask_with_intent_classifier_routes_summary_to_representative() {
         .unwrap();
 
     let hits = ellisii
-        .ask(
-            "全体を要約して",
-            ellisii_sdk::AskOptions::default(),
-            |_| {},
-        )
+        .ask("全体を要約して", ellisii_sdk::AskOptions::default(), |_| {})
         .await
         .unwrap();
     assert!(!hits.is_empty());
@@ -450,10 +447,7 @@ async fn builder_with_chunker_uses_custom_chunker() {
         .with_chunker(chunker)
         .build()
         .unwrap();
-    let _ = ellisii
-        .index_file(tmp.path().join("a.txt"))
-        .await
-        .unwrap();
+    let _ = ellisii.index_file(tmp.path().join("a.txt")).await.unwrap();
 
     assert!(
         calls.load(Ordering::SeqCst) >= 1,

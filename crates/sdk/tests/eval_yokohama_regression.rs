@@ -66,9 +66,7 @@ async fn yokohama_recall_does_not_regress() {
     let ellisii = match Ellisii::builder()
         .with_embedder_static_jp(&model)
         .and_then(|b| b.with_store_sqlite(&db, dim))
-        .and_then(|b| {
-            Ok(b.with_notebook_id(Uuid::parse_str(NOTEBOOK_ID).expect("notebook uuid")))
-        })
+        .and_then(|b| Ok(b.with_notebook_id(Uuid::parse_str(NOTEBOOK_ID).expect("notebook uuid"))))
         .and_then(|b| b.build())
     {
         Ok(e) => e,

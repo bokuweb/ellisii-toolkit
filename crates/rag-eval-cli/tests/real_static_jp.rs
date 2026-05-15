@@ -68,16 +68,26 @@ async fn static_jp_vector_only_civil_law() {
         rewriter: None,
         multi: ellisii_rag::MultiQueryOptions::default(),
     };
-    let rows = run_eval_with_options(&opts, &corpus, &golden).await.unwrap();
+    let rows = run_eval_with_options(&opts, &corpus, &golden)
+        .await
+        .unwrap();
     println!("\n=== static-jp on jp-civil-law (sqlite, k=10) ===");
     for r in &rows {
         println!(
             "  semantic={:.2}  recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}",
-            r.semantic, r.summary.recall_at_k, r.summary.hit_at_k, r.summary.ndcg_at_k, r.summary.mrr
+            r.semantic,
+            r.summary.recall_at_k,
+            r.summary.hit_at_k,
+            r.summary.ndcg_at_k,
+            r.summary.mrr
         );
     }
     // 真 embedder では vector-only でも recall@10 ≥ 0.7 を期待。
-    let vec_only = &rows.iter().find(|r| (r.semantic - 1.0).abs() < 1e-6).unwrap().summary;
+    let vec_only = &rows
+        .iter()
+        .find(|r| (r.semantic - 1.0).abs() < 1e-6)
+        .unwrap()
+        .summary;
     assert!(
         vec_only.recall_at_k >= 0.7,
         "static-jp vector recall@10 too low: {}",
@@ -101,12 +111,18 @@ async fn static_jp_vector_only_cs_wiki() {
         rewriter: None,
         multi: ellisii_rag::MultiQueryOptions::default(),
     };
-    let rows = run_eval_with_options(&opts, &corpus, &golden).await.unwrap();
+    let rows = run_eval_with_options(&opts, &corpus, &golden)
+        .await
+        .unwrap();
     println!("\n=== static-jp on jp-cs-wiki (sqlite, k=10) ===");
     for r in &rows {
         println!(
             "  semantic={:.2}  recall={:.3}  hit={:.3}  nDCG={:.3}  MRR={:.3}",
-            r.semantic, r.summary.recall_at_k, r.summary.hit_at_k, r.summary.ndcg_at_k, r.summary.mrr
+            r.semantic,
+            r.summary.recall_at_k,
+            r.summary.hit_at_k,
+            r.summary.ndcg_at_k,
+            r.summary.mrr
         );
     }
 }
