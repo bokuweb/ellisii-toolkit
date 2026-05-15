@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use ellisii_core::{Chunk, Result};
 use ellisii_embed_core::Embedder;
 use ellisii_sdk::Ellisii;
-use ellisii_store_core::VectorStore;
 use std::sync::Arc;
 use uuid::Uuid;
 

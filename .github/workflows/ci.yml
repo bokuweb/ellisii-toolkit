@@ -29,34 +29,21 @@ jobs:
 
   clippy:
     name: cargo clippy
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
+    # Apple Silicon only. `parser-audio` pulls `whisper-rs-sys` which
+    # forces `GGML_METAL=ON` and won't build on Linux (the build script
+    # has no escape hatch and the Apple `Foundation.framework` is
+    # required). Until we have a story for Linux audio, restrict this
+    # job to macOS where the whole stack actually works.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-
-      - name: Install Linux build deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          # llama-cpp-2 builds llama.cpp from source; cmake comes with the
-          # runner already. libssl-dev / pkg-config for openssl-sys.
-          sudo apt-get install -y --no-install-recommends \
-            cmake \
-            libssl-dev \
-            pkg-config
-
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.os }}-clippy
+          shared-key: macos-clippy
           cache-on-failure: true
-
       # Library and binary targets only. Tests / examples / benches have
       # different style conventions (looser data shapes, scripted
       # workflows) and are best policed by `cargo test` compiling them.
@@ -64,30 +51,14 @@ jobs:
 
   test:
     name: cargo test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux build deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            cmake \
-            libssl-dev \
-            pkg-config
-
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.os }}-test
+          shared-key: macos-test
           cache-on-failure: true
-
       # Tests requiring external assets (ONNX / gguf / OCR weights) are
       # gated with `#[ignore]` per CLAUDE.md and not run by default. To
       # exercise them locally, add `-- --ignored`.
