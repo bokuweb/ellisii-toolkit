@@ -47,15 +47,28 @@ fn fixture_root() -> PathBuf {
         .join("rag/tests/fixtures/eval")
 }
 
-/// Run 12l (cap=off) Δ — 推奨判定の reference。
+/// Run 12l (cap=off) / Run 12n (拡張) の outcome — 推奨判定の reference。
+/// None なら未測定。
 fn run12l_outcome(name: &str) -> Option<(f32, f32, &'static str)> {
     match name {
+        // Run 12l 5 fixtures
         "jp-civil-law-hard" => Some((0.143, 0.295, "win")),
         "jp-labor-law" => Some((0.000, -0.043, "天井 (neutral)")),
         "jp-cs-wiki-hard" => Some((0.026, 0.010, "mild win")),
         "jp-workplace-regs" => Some((-0.025, -0.053, "退行")),
         "jp-tokkyo-hou" => Some((-0.016, -0.054, "退行")),
         _ => None,
+    }
+}
+
+/// 推奨判定 (Run 12m provisional 閾値 = q-cap match 0.20)。
+fn predict(q_cap_match: f32) -> &'static str {
+    if q_cap_match < 0.15 {
+        "ON 推奨"
+    } else if q_cap_match >= 0.25 {
+        "OFF 推奨"
+    } else {
+        "uncertain"
     }
 }
 
@@ -80,22 +93,32 @@ fn corpus_paraphrase_score(corpus: &[CorpusEntry]) -> f32 {
 }
 
 fn main() -> anyhow::Result<()> {
-    let fixtures = [
-        "jp-civil-law-hard",
-        "jp-labor-law",
-        "jp-cs-wiki-hard",
-        "jp-workplace-regs",
-        "jp-tokkyo-hou",
-    ];
+    // 指定があればそれ、無ければ fixture root を scan して有効な fixture を全部出す。
+    let env_fixtures = std::env::var("ELLISII_EVAL_FIXTURES").ok();
+    let fixtures: Vec<String> = if let Some(s) = env_fixtures {
+        s.split(',').map(|s| s.trim().to_string()).collect()
+    } else {
+        let mut out = Vec::new();
+        for ent in std::fs::read_dir(fixture_root())? {
+            let p = ent?.path();
+            if p.is_dir() && p.join("corpus.json").exists() && p.join("golden.json").exists() {
+                if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
+                    out.push(name.to_string());
+                }
+            }
+        }
+        out.sort();
+        out
+    };
 
     println!(
-        "| fixture                | n  | paraphrase | q_specific% | q-cap match | q-body recall | MRR Δ | 判定 |"
+        "| fixture                | n    | paraphrase | q_specific% | q-cap match | q-body recall | MRR Δ  | 12l 判定       | 12m 予測   |"
     );
     println!(
-        "|------------------------|---:|-----------:|------------:|------------:|--------------:|------:|------|"
+        "|------------------------|-----:|-----------:|------------:|------------:|--------------:|-------:|----------------|------------|"
     );
 
-    for name in fixtures {
+    for name in &fixtures {
         let path = fixture_root().join(name).join("corpus.json");
         let corpus: Vec<CorpusEntry> = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
         let golden_path = fixture_root().join(name).join("golden.json");
@@ -122,17 +145,23 @@ fn main() -> anyhow::Result<()> {
         };
         let q_body_recall = query_body_recall_mean(&queries, &bodies);
 
-        let (_hit_d, mrr_d, verdict) = run12l_outcome(name).unwrap_or((0.0, 0.0, "?"));
+        let outcome = run12l_outcome(name);
+        let (mrr_str, verdict) = match outcome {
+            Some((_, mrr_d, v)) => (format!("{:+.3}", mrr_d), v),
+            None => ("  ?  ".to_string(), "?"),
+        };
+        let pred = predict(q_cap_match);
         println!(
-            "| {:<22} | {:>2} | {:>10.3} | {:>10.1}% | {:>11.3} | {:>13.3} | {:>+5.3} | {} |",
+            "| {:<22} | {:>4} | {:>10.3} | {:>10.1}% | {:>11.3} | {:>13.3} | {:>6} | {:<14} | {:<10} |",
             name,
             corpus.len(),
             paraphrase,
             q_specific_pct,
             q_cap_match,
             q_body_recall,
-            mrr_d,
+            mrr_str,
             verdict,
+            pred,
         );
     }
 
