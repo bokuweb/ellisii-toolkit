@@ -46,6 +46,10 @@ llamacpp = ["dep:ellisii-llm-llamacpp", "ellisii-llm-llamacpp/gguf"]
 static-jp = ["dep:ellisii-embed-static-jp"]
 # Provence ONNX (cross-encoder rerank / context compressor)
 provence-onnx = ["dep:ellisii-provence-onnx", "ellisii-provence-onnx/real"]
+# Vaporetto (morpheme tokenizer for FTS5). 主に eval/sample 用途。
+vaporetto = ["dep:ellisii-jp-tokenizer-vaporetto", "ellisii-jp-tokenizer-vaporetto/real"]
+# Delarocha (vibrato-system 互換, MeCab 辞書をロード) を FTS5 用に使う。
+delarocha = ["dep:ellisii-jp-tokenizer-delarocha", "ellisii-jp-tokenizer-delarocha/real"]
 
 [dependencies.ellisii-llm-llamacpp]
 workspace = true
@@ -59,11 +63,20 @@ optional = true
 workspace = true
 optional = true
 
+[dependencies.ellisii-jp-tokenizer-vaporetto]
+workspace = true
+optional = true
+
+[dependencies.ellisii-jp-tokenizer-delarocha]
+workspace = true
+optional = true
+
 [dev-dependencies]
 tokio.workspace = true
 tempfile = "3"
 async-trait.workspace = true
 ellisii-rag.workspace = true
 ellisii-core.workspace = true
+unicode-normalization = "0.1"
 ellisii-llm-core.workspace = true
 rusqlite = { version = "0.32", features = ["bundled"] }
