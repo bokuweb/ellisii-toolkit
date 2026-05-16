@@ -1199,6 +1199,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ellisii-jp-tokenizer-nfkc"
+version = "0.1.0"
+dependencies = [
+ "ellisii-jp-tokenizer-core",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "ellisii-jp-tokenizer-vaporetto"
 version = "0.1.0"
 dependencies = [
@@ -1512,6 +1520,7 @@ dependencies = [
  "ellisii-jp-tokenizer-bigram",
  "ellisii-jp-tokenizer-core",
  "ellisii-jp-tokenizer-delarocha",
+ "ellisii-jp-tokenizer-nfkc",
  "ellisii-jp-tokenizer-vaporetto",
  "ellisii-llm-core",
  "ellisii-llm-llamacpp",

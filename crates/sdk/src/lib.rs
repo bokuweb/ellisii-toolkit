@@ -141,12 +141,69 @@ impl EllisiiBuilder {
     }
 
     /// sqlite + sqlite-vec + FTS5 ストア。永続化あり。
-    /// `dim` は埋め込み次元 (embedder と一致させる)。
+    /// `dim` は埋め込み次元 (embedder と一致させる)。FTS5 tokenizer は char-bigram
+    /// (依存ゼロ・デフォルト)。形態素を使いたいときは
+    /// [`with_store_sqlite_with_tokenizer`] を使う。
     pub fn with_store_sqlite<P: AsRef<Path>>(mut self, db_path: P, dim: usize) -> Result<Self> {
         let tokenizer: Arc<dyn JpTokenizer> = Arc::new(CharBigramTokenizer::new());
         let store = SqliteStore::open_with_tokenizer(db_path.as_ref(), dim, tokenizer)?;
         self.store = Some(Arc::new(store));
         Ok(self)
+    }
+
+    /// sqlite + sqlite-vec + FTS5 ストアを **任意の [`JpTokenizer`]** で開く。
+    /// vaporetto / delarocha などの形態素 tokenizer を本番 index に流す入口。
+    pub fn with_store_sqlite_with_tokenizer<P: AsRef<Path>>(
+        mut self,
+        db_path: P,
+        dim: usize,
+        tokenizer: Arc<dyn JpTokenizer>,
+    ) -> Result<Self> {
+        let store = SqliteStore::open_with_tokenizer(db_path.as_ref(), dim, tokenizer)?;
+        self.store = Some(Arc::new(store));
+        Ok(self)
+    }
+
+    /// sqlite ストアを **NFKC 正規化を被せた bigram tokenizer** で開く。
+    /// 半角/全角数字や半角カナの揺れを FTS5 indexer 側で吸収できる。
+    /// query 側は [`Ellisii::search`] 入口で同じ正規化を行うので index/query が
+    /// 揃う。
+    pub fn with_store_sqlite_nfkc<P: AsRef<Path>>(self, db_path: P, dim: usize) -> Result<Self> {
+        let inner: Arc<dyn JpTokenizer> = Arc::new(CharBigramTokenizer::new());
+        let tok: Arc<dyn JpTokenizer> =
+            Arc::new(ellisii_jp_tokenizer_nfkc::NfkcTokenizer::new(inner));
+        self.with_store_sqlite_with_tokenizer(db_path, dim, tok)
+    }
+
+    /// vaporetto モデルをロードして sqlite ストアの FTS5 tokenizer に流す
+    /// convenience。`feature = "vaporetto"` 必須。モデルは `.model.zst`。
+    #[cfg(feature = "vaporetto")]
+    pub fn with_store_sqlite_vaporetto<P: AsRef<Path>, Q: AsRef<Path>>(
+        self,
+        db_path: P,
+        dim: usize,
+        model_path: Q,
+    ) -> Result<Self> {
+        use ellisii_jp_tokenizer_vaporetto::VaporettoTokenizer;
+        let tok = VaporettoTokenizer::from_zst(model_path.as_ref())
+            .map_err(|e| Error::Store(format!("load vaporetto: {e}")))?;
+        self.with_store_sqlite_with_tokenizer(db_path, dim, Arc::new(tok))
+    }
+
+    /// delarocha (Vibrato-system 互換) をロードして sqlite ストアの FTS5
+    /// tokenizer に流す convenience。`feature = "delarocha"` 必須。
+    /// 辞書は `system.dic` または `system.dic.zst`。
+    #[cfg(feature = "delarocha")]
+    pub fn with_store_sqlite_delarocha<P: AsRef<Path>, Q: AsRef<Path>>(
+        self,
+        db_path: P,
+        dim: usize,
+        dict_path: Q,
+    ) -> Result<Self> {
+        use ellisii_jp_tokenizer_delarocha::DelarochaTokenizer;
+        let tok = DelarochaTokenizer::from_path(dict_path.as_ref())
+            .map_err(|e| Error::Store(format!("load delarocha: {e}")))?;
+        self.with_store_sqlite_with_tokenizer(db_path, dim, Arc::new(tok))
     }
 
     /// 任意の [`LlmBackend`] 実装を渡す。指定すると [`Ellisii::ask`] が使えるようになる。
@@ -987,7 +1044,13 @@ impl Ellisii {
     }
 
     /// 類似検索 + キーワード検索を統合した hybrid retrieval。LLM は呼ばない。
+    ///
+    /// クエリは入口で NFKC 正規化される (半角/全角数字・半角カナ等の揺れを吸収)。
+    /// 同じ正規化を index 側でも掛けたい場合は [`Self::builder()`] の
+    /// `with_store_sqlite_nfkc` を使う。
     pub async fn search(&self, query: &str, opts: SearchOptions) -> Result<Vec<SearchHit>> {
+        let query_owned = ellisii_jp_tokenizer_nfkc::nfkc(query);
+        let query = query_owned.as_str();
         let base = opts.semantic_weight.clamp(0.0, 1.0);
         let semantic = if opts.auto_adjust_weight {
             ellisii_rag::adjust_hybrid_weight_for_query(base, query)
@@ -1664,10 +1727,14 @@ impl Ellisii {
     ///
     /// `opts.route_by_intent = true` (既定) かつ classifier が構築済みのときは、
     /// クエリの意図に応じて retrieval 戦略を切り替える ([`AskOptions`] 参照)。
+    ///
+    /// クエリは入口で NFKC 正規化される ([`Self::search`] と同じ)。
     pub async fn ask<F>(&self, query: &str, opts: AskOptions, on_token: F) -> Result<Vec<SearchHit>>
     where
         F: FnMut(String) + Send + 'static,
     {
+        let query_owned = ellisii_jp_tokenizer_nfkc::nfkc(query);
+        let query = query_owned.as_str();
         let llm = self
             .llm
             .as_ref()
