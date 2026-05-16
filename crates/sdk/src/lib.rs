@@ -81,6 +81,7 @@ pub struct EllisiiBuilder {
     query_rewriter: Option<Arc<dyn QueryRewriter>>,
     compressor: Option<Arc<dyn ContextCompressor>>,
     chunker: Option<Arc<dyn ellisii_chunker::Chunker>>,
+    caption_enricher: Option<Arc<dyn ellisii_core::CaptionEnricher>>,
     notebook_id: Option<Uuid>,
 }
 
@@ -101,8 +102,39 @@ impl EllisiiBuilder {
             query_rewriter: None,
             compressor: None,
             chunker: None,
+            caption_enricher: None,
             notebook_id: None,
         }
+    }
+
+    /// 任意の [`ellisii_core::CaptionEnricher`] 実装を渡す。
+    /// `ingest_file` 時に chunker 通過後の chunk を enrich する。
+    pub fn with_caption_enricher(
+        mut self,
+        enricher: Arc<dyn ellisii_core::CaptionEnricher>,
+    ) -> Self {
+        self.caption_enricher = Some(enricher);
+        self
+    }
+
+    /// **同梱の日本法令 thesaurus** (jp-law-thesaurus v5, 458 entries) を使って
+    /// ingest 時に chunk caption を enrich する。法令 / 契約書 / 判例 系
+    /// corpus で `(虚偽表示)` → `(虚偽表示 ｜ シナリオ: 税逃れのために売買契約書
+    /// だけ作る, ...)` のように展開し、シナリオ → 法律ターム の paraphrase gap
+    /// を retrieval 側で吸収する。pure string match、<1 ms / chunk、LLM 不要。
+    ///
+    /// 経緯は `docs/eval/recall-evals.md` Run 12d-12h を参照。
+    pub fn with_caption_enrichment_default(self) -> Self {
+        let thes = Arc::new(ellisii_jp_law_thesaurus::LawThesaurus::bundled());
+        self.with_caption_enricher(thes)
+    }
+
+    /// 外部 JSON ファイルから法令 thesaurus を読んで enrich に使う。schema は
+    /// [`ellisii_jp_law_thesaurus::LawThesaurus::from_path`] に従う。
+    pub fn with_caption_enrichment_dict<P: AsRef<Path>>(self, p: P) -> Result<Self> {
+        let thes = ellisii_jp_law_thesaurus::LawThesaurus::from_path(p.as_ref())
+            .map_err(|e| Error::Other(anyhow::anyhow!("load thesaurus: {e}")))?;
+        Ok(self.with_caption_enricher(Arc::new(thes)))
     }
 
     /// 任意の [`Embedder`] 実装を渡す。
@@ -375,6 +407,9 @@ impl EllisiiBuilder {
         );
         if let Some(c) = self.chunker.clone() {
             ingestor = ingestor.with_chunker(c);
+        }
+        if let Some(e) = self.caption_enricher.clone() {
+            ingestor = ingestor.with_caption_enricher(e);
         }
 
         // intent_classifier の自動構築:

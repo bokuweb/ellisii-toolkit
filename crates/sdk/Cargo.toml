@@ -28,6 +28,7 @@ ellisii-store-sqlite.workspace = true
 ellisii-jp-tokenizer-core.workspace = true
 ellisii-jp-tokenizer-bigram.workspace = true
 ellisii-jp-tokenizer-nfkc.workspace = true
+ellisii-jp-law-thesaurus.workspace = true
 ellisii-llm-core.workspace = true
 ellisii-llm-stub.workspace = true
 ellisii-rag.workspace = true

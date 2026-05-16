@@ -162,6 +162,28 @@ pub fn is_retrieval_noise(text: &str) -> bool {
     false
 }
 
+/// ingest pipeline で各 chunk を任意のロジックで enrich するためのフック。
+///
+/// 実装側 (例: `ellisii_jp_law_thesaurus::LawThesaurus`) は法律ターム → シナリオ
+/// 表現の静的辞書マッチで chunk.text を書き換える。本 trait を経由することで
+/// `ellisii-ingest` / `ellisii-sdk` 側が辞書 crate に依存せずに済む。
+///
+/// `enrich_chunk` の戻り値: 1 つでも追記したら `true`、未マッチで何もしなかったら `false`。
+pub trait CaptionEnricher: Send + Sync {
+    fn enrich_chunk(&self, chunk: &mut Chunk) -> bool;
+
+    /// 複数 chunk を一括 enrich する便利関数。デフォルト実装で十分。
+    fn enrich_chunks(&self, chunks: &mut [Chunk]) -> usize {
+        let mut n = 0;
+        for c in chunks.iter_mut() {
+            if self.enrich_chunk(c) {
+                n += 1;
+            }
+        }
+        n
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

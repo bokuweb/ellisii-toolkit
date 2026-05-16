@@ -31,6 +31,7 @@ members = [
     "crates/jp-tokenizer-vaporetto",
     "crates/jp-tokenizer-delarocha",
     "crates/jp-tokenizer-nfkc",
+    "crates/jp-law-thesaurus",
     "crates/provence-core",
     "crates/provence-passthrough",
     "crates/provence-onnx",
@@ -91,6 +92,7 @@ ellisii-jp-tokenizer-bigram = { path = "crates/jp-tokenizer-bigram" }
 ellisii-jp-tokenizer-vaporetto = { path = "crates/jp-tokenizer-vaporetto" }
 ellisii-jp-tokenizer-delarocha = { path = "crates/jp-tokenizer-delarocha" }
 ellisii-jp-tokenizer-nfkc = { path = "crates/jp-tokenizer-nfkc" }
+ellisii-jp-law-thesaurus = { path = "crates/jp-law-thesaurus" }
 ellisii-provence-core = { path = "crates/provence-core" }
 ellisii-provence-passthrough = { path = "crates/provence-passthrough" }
 ellisii-provence-onnx = { path = "crates/provence-onnx" }
