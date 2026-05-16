@@ -62,8 +62,10 @@ async fn main() -> anyhow::Result<()> {
 #[cfg(feature = "static-jp")]
 async fn run() -> anyhow::Result<()> {
     let dir = fixture_dir();
-    let corpus: Vec<CorpusEntry> = serde_json::from_str(&std::fs::read_to_string(dir.join("corpus.json"))?)?;
-    let gold: GoldenSet = GoldenSet::from_json_str(&std::fs::read_to_string(dir.join("golden.json"))?)?;
+    let corpus: Vec<CorpusEntry> =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("corpus.json"))?)?;
+    let gold: GoldenSet =
+        GoldenSet::from_json_str(&std::fs::read_to_string(dir.join("golden.json"))?)?;
     eprintln!(
         "corpus: {} chunks, golden: {} ({} items)",
         corpus.len(),
@@ -123,7 +125,10 @@ async fn run() -> anyhow::Result<()> {
 
     // 1) weight x top_k sweep, caption_rerank=off
     println!("\n=== Baseline: semantic_weight × top_k (caption_rerank=false) ===");
-    println!("{:<8} {:<6} {:<10} {:<10} {:<10} {:<10}", "weight", "k", "recall", "hit", "ndcg", "mrr");
+    println!(
+        "{:<8} {:<6} {:<10} {:<10} {:<10} {:<10}",
+        "weight", "k", "recall", "hit", "ndcg", "mrr"
+    );
     let weights = [0.0_f32, 0.25, 0.5, 0.75, 1.0];
     let ks = [1usize, 3, 5, 10];
     let kmax = *ks.iter().max().unwrap();
@@ -140,7 +145,10 @@ async fn run() -> anyhow::Result<()> {
 
     // 2) caption rerank A/B (weight=0.5)
     println!("\n=== Caption rerank A/B (weight=0.5) ===");
-    println!("{:<20} {:<10} {:<10} {:<10} {:<10}", "variant", "recall", "hit", "ndcg", "mrr");
+    println!(
+        "{:<20} {:<10} {:<10} {:<10} {:<10}",
+        "variant", "recall", "hit", "ndcg", "mrr"
+    );
     for &k in &ks {
         let off = run_pairs(&ellisii, &gold, &id_map, 0.5, false, k, 0, 0.0).await?;
         let on = run_pairs(&ellisii, &gold, &id_map, 0.5, true, k, 0, 0.0).await?;
@@ -148,39 +156,70 @@ async fn run() -> anyhow::Result<()> {
         let s_on = summarize(&on, k);
         println!(
             "{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
-            format!("off (k={})", k), s_off.recall_at_k, s_off.hit_at_k, s_off.ndcg_at_k, s_off.mrr
+            format!("off (k={})", k),
+            s_off.recall_at_k,
+            s_off.hit_at_k,
+            s_off.ndcg_at_k,
+            s_off.mrr
         );
         println!(
             "{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
-            format!("on  (k={})", k), s_on.recall_at_k, s_on.hit_at_k, s_on.ndcg_at_k, s_on.mrr
+            format!("on  (k={})", k),
+            s_on.recall_at_k,
+            s_on.hit_at_k,
+            s_on.ndcg_at_k,
+            s_on.mrr
         );
     }
 
     // 3) auto_adjust_weight A/B (weight base=0.5, caption_rerank=on)
     println!("\n=== auto_adjust_weight A/B (cap=on, base=0.5) ===");
-    println!("{:<20} {:<10} {:<10} {:<10} {:<10}", "variant", "recall", "hit", "ndcg", "mrr");
+    println!(
+        "{:<20} {:<10} {:<10} {:<10} {:<10}",
+        "variant", "recall", "hit", "ndcg", "mrr"
+    );
     for &k in &[1usize, 5, 10] {
         let mut off = Vec::with_capacity(gold.items.len());
         let mut on = Vec::with_capacity(gold.items.len());
         for item in &gold.items {
             for (acc, auto) in [(&mut off, false), (&mut on, true)] {
                 let hits = ellisii
-                    .search(&item.query, SearchOptions {
-                        top_k: k, semantic_weight: 0.5, caption_rerank: true,
-                        auto_adjust_weight: auto, ..Default::default()
-                    })
+                    .search(
+                        &item.query,
+                        SearchOptions {
+                            top_k: k,
+                            semantic_weight: 0.5,
+                            caption_rerank: true,
+                            auto_adjust_weight: auto,
+                            ..Default::default()
+                        },
+                    )
                     .await?;
-                let pred: Vec<String> =
-                    hits.iter().filter_map(|h| id_map.get(&h.chunk.id).cloned()).collect();
+                let pred: Vec<String> = hits
+                    .iter()
+                    .filter_map(|h| id_map.get(&h.chunk.id).cloned())
+                    .collect();
                 acc.push((pred, item.relevant.clone()));
             }
         }
         let s_off = summarize(&off, k);
         let s_on = summarize(&on, k);
-        println!("{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
-            format!("auto=off (k={})", k), s_off.recall_at_k, s_off.hit_at_k, s_off.ndcg_at_k, s_off.mrr);
-        println!("{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
-            format!("auto=on  (k={})", k), s_on.recall_at_k, s_on.hit_at_k, s_on.ndcg_at_k, s_on.mrr);
+        println!(
+            "{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
+            format!("auto=off (k={})", k),
+            s_off.recall_at_k,
+            s_off.hit_at_k,
+            s_off.ndcg_at_k,
+            s_off.mrr
+        );
+        println!(
+            "{:<20} {:<10.3} {:<10.3} {:<10.3} {:<10.3}",
+            format!("auto=on  (k={})", k),
+            s_on.recall_at_k,
+            s_on.hit_at_k,
+            s_on.ndcg_at_k,
+            s_on.mrr
+        );
     }
 
     // 4) failure diagnosis at k=5 (caption on)
