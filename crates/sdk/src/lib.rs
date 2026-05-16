@@ -922,8 +922,17 @@ pub enum EnrichmentRecommendation {
         /// 観測された q-cap match (~0.0-0.15)
         q_cap_match: f32,
     },
-    /// 推奨: enrichment OFF。query が既に caption と literal match していて、
-    /// scenario suffix が caption boost を dilute する可能性が高い。
+    /// 推奨: enrichment を **ON にする確信は無い** — ON にした場合、4 fixture
+    /// 中 3 件で実測 net 退行 (workplace-regs / tokkyo-hou / yokohama, Run 12k/n)。
+    ///
+    /// **ただし**「Off ⇒ 必ず退行」 ではない。jp-civil-law (q-cap=0.307) は
+    /// 同じく Off 域にあるが Run 12p で実測 1 件 rescue (退行 0) と
+    /// mild win に振れた。caption が article-title 風で短い corpus では
+    /// scenario suffix への耐性が高い様子。
+    ///
+    /// `Off` は「OFF を強制すべき」 ではなく「ON 推奨できない (退行 75%)」
+    /// と読むべき。確実性を求めるなら自前 fixture で `eval_enrichment_ab`
+    /// を 1 度回して net 効果を直接確認するのが安全。
     Off {
         /// 観測された q-cap match (~0.25-)
         q_cap_match: f32,
@@ -1906,11 +1915,13 @@ impl Ellisii {
     /// `with_caption_enrichment_default()` を ON にすべきか、サンプルクエリ
     /// 群から自動推奨する。
     ///
-    /// Run 12k-12n の cross-corpus A/B (8 fixture, 全件 sign-correct) で
-    /// 校正された **q-cap match (query↔caption literal match)** 信号を使う:
+    /// Run 12k-12p の cross-corpus A/B (12 valid fixture) で校正された
+    /// **q-cap match (query↔caption literal match)** 信号を使う:
     ///
     /// - `< 0.15` → [`EnrichmentRecommendation::On`] (paraphrase gap が大きい)
-    /// - `>= 0.25` → [`EnrichmentRecommendation::Off`] (caption が既に key)
+    ///   — 8/8 fixture で退行ゼロの強い保証
+    /// - `>= 0.25` → [`EnrichmentRecommendation::Off`] (ON 推奨できない)
+    ///   — 4 fixture 中 3 件で実測退行、1 件 (jp-civil-law) は反例的に mild win
     /// - 中間帯 → [`EnrichmentRecommendation::Uncertain`] (自前 A/B 推奨)
     ///
     /// 推奨される [`SearchOptions::caption_rerank`] とのペアリングは
