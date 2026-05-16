@@ -121,7 +121,7 @@ where
         total_chars: total,
         en_ratio,
         has_zenkaku_digit: has_zen_digit,
-        has_kanji_digit: has_kanji_digit,
+        has_kanji_digit,
     };
     let pick = if morpheme_dict_available {
         TokenizerRecommendation::MorphemeNfkc
