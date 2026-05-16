@@ -123,7 +123,28 @@ impl EllisiiBuilder {
     /// だけ作る, ...)` のように展開し、シナリオ → 法律ターム の paraphrase gap
     /// を retrieval 側で吸収する。pure string match、<1 ms / chunk、LLM 不要。
     ///
-    /// 経緯は `docs/eval/recall-evals.md` Run 12d-12h を参照。
+    /// # **注意 — 無条件 ON はおすすめできない**
+    ///
+    /// Run 12k ([recall-evals.md](https://github.com/bokuweb/ellisii/blob/main/docs/eval/recall-evals.md))
+    /// の 5 corpora A/B で、**query 性質によって net 効果が反転する**ことが
+    /// 確認されている:
+    ///
+    /// | corpus | hit@5 Δ | MRR Δ | 判定 |
+    /// |---|---:|---:|---|
+    /// | jp-civil-law-hard (paraphrase) | +0.143 | +0.182 | win |
+    /// | jp-cs-wiki-hard | +0.026 | +0.010 | mild win |
+    /// | jp-tokkyo-hou | +0.016 | -0.080 | mixed |
+    /// | jp-workplace-regs (literal lookup) | **-0.075** | **-0.140** | **退行** |
+    ///
+    /// **推奨**: 「シナリオ表現 → 法律ターム」の paraphrase が頻発するアプリ
+    /// (民事相談チャット, 法律 Q&A 等) では ON。逆に「第◯条」「3 歳未満」「60
+    /// 時間」のような **specific keyword lookup** が中心の corpus (就業規則
+    /// 検索, 条文番号引き) では OFF または個別評価を推奨。判断材料が無い場合は
+    /// 自前 fixture で `ELLISII_EVAL_FIXTURE=<name> cargo run -p ellisii-sdk
+    /// --features static-jp --example eval_enrichment_ab --release` の A/B を
+    /// 取ってから default にする。
+    ///
+    /// 経緯は `docs/eval/recall-evals.md` Run 12d-12k を参照。
     pub fn with_caption_enrichment_default(self) -> Self {
         let thes = Arc::new(ellisii_jp_law_thesaurus::LawThesaurus::bundled());
         self.with_caption_enricher(thes)
