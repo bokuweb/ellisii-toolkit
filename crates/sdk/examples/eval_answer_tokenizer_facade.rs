@@ -46,10 +46,33 @@ struct CorpusEntry {
     text: String,
 }
 
+/// `must_include` の各要素は以下のいずれか:
+/// - 文字列 `"無効"` → answer に必ずその部分文字列が含まれている必要がある。
+/// - 配列 `["無効", "効力を生じない"]` → **any-of**。少なくとも 1 つが含まれて
+///   いれば pass。LLM の自然な言い換え (条文ターム ↔ 説明文) を吸収するため。
+///
+/// 既存 `answer_golden.json` (jp-workplace-regs / jp-cs-wiki-hard) は前者の
+/// 表記しか使っていないので backward-compatible。
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum MustItem {
+    Required(String),
+    AnyOf(Vec<String>),
+}
+
+impl MustItem {
+    fn matches(&self, answer: &str) -> bool {
+        match self {
+            MustItem::Required(s) => answer.contains(s.as_str()),
+            MustItem::AnyOf(vs) => vs.iter().any(|s| answer.contains(s.as_str())),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct AnswerItem {
     query: String,
-    must_include: Vec<String>,
+    must_include: Vec<MustItem>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -252,7 +275,7 @@ async fn run() -> anyhow::Result<()> {
 async fn run_one(
     ellisii: &Ellisii,
     query: &str,
-    must_include: &[String],
+    must_include: &[MustItem],
 ) -> anyhow::Result<(bool, String)> {
     let buf = Arc::new(Mutex::new(String::new()));
     let cloned = Arc::clone(&buf);
@@ -271,6 +294,6 @@ async fn run_one(
         })
         .await?;
     let ans = buf.lock().unwrap().clone();
-    let ok = must_include.iter().all(|s| ans.contains(s.as_str()));
+    let ok = must_include.iter().all(|m| m.matches(&ans));
     Ok((ok, ans))
 }
