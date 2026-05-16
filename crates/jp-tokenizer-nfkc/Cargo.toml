@@ -1,0 +1,9 @@
+[package]
+name = "ellisii-jp-tokenizer-nfkc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ellisii-jp-tokenizer-core.workspace = true
+unicode-normalization = "0.1"
