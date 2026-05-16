@@ -1,0 +1,410 @@
+{
+  "items": [
+    {
+      "query": "入湯税の税率はいくらですか",
+      "relevant": [
+        "yokohama-325"
+      ],
+      "tags": [
+        "rate",
+        "easy"
+      ]
+    },
+    {
+      "query": "温泉に入ったときに課される税の額",
+      "relevant": [
+        "yokohama-325"
+      ],
+      "tags": [
+        "rate",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "都市計画税の税率は何パーセント",
+      "relevant": [
+        "yokohama-349"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "事業所税の税率を教えて",
+      "relevant": [
+        "yokohama-335"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "固定資産税の税率は",
+      "relevant": [
+        "yokohama-230"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "法人税割の税率は",
+      "relevant": [
+        "yokohama-71"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "個人市民税の所得割の税率",
+      "relevant": [
+        "yokohama-69"
+      ],
+      "tags": [
+        "rate",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "個人の均等割は年いくら",
+      "relevant": [
+        "yokohama-52"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "均等割が軽減されるのはどういう場合で、いくらになるか",
+      "relevant": [
+        "yokohama-53"
+      ],
+      "tags": [
+        "hard"
+      ]
+    },
+    {
+      "query": "市たばこ税の税率",
+      "relevant": [
+        "yokohama-294"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "固定資産税の納期はいつ",
+      "relevant": [
+        "yokohama-232"
+      ],
+      "tags": [
+        "procedure"
+      ]
+    },
+    {
+      "query": "延滞金の利率は何パーセント",
+      "relevant": [
+        "yokohama-30"
+      ],
+      "tags": [
+        "rate",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "特別土地保有税の税率はいくら",
+      "relevant": [
+        "yokohama-305"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "分離課税に係る所得割の税率",
+      "relevant": [
+        "yokohama-182"
+      ],
+      "tags": [
+        "rate"
+      ]
+    },
+    {
+      "query": "徴税吏員とは何ですか",
+      "relevant": [
+        "yokohama-2"
+      ],
+      "tags": [
+        "definition"
+      ]
+    },
+    {
+      "query": "市税の課税の根拠となる規定は",
+      "relevant": [
+        "yokohama-1"
+      ],
+      "tags": [
+        "definition"
+      ]
+    },
+    {
+      "query": "固定資産税の納税義務者は誰ですか",
+      "relevant": [
+        "yokohama-220"
+      ],
+      "tags": [
+        "definition",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "土地の価格がいくら以下なら固定資産税はかからない",
+      "relevant": [
+        "yokohama-209"
+      ],
+      "tags": [
+        "threshold",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "固定資産税の免税点はいくら",
+      "relevant": [
+        "yokohama-209"
+      ],
+      "tags": [
+        "threshold"
+      ]
+    },
+    {
+      "query": "軽自動車の環境性能割が免除される条件",
+      "relevant": [
+        "yokohama-261"
+      ],
+      "tags": [
+        "threshold",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "都市計画税の賦課期日はいつ",
+      "relevant": [
+        "yokohama-350"
+      ],
+      "tags": [
+        "procedure"
+      ]
+    },
+    {
+      "query": "入湯税は誰が納めるのですか",
+      "relevant": [
+        "yokohama-324"
+      ],
+      "tags": [
+        "definition",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "入湯税はどう徴収されるか",
+      "relevant": [
+        "yokohama-326"
+      ],
+      "tags": [
+        "procedure"
+      ]
+    },
+    {
+      "query": "市税の課税標準額の端数はどう計算しますか",
+      "relevant": [
+        "yokohama-33"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "退職金にかかる市民税の税率",
+      "relevant": [
+        "yokohama-182"
+      ],
+      "tags": [
+        "rate",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "横浜市が課する普通税にはどんな種類があるか",
+      "relevant": [
+        "yokohama-3"
+      ],
+      "tags": [
+        "definition"
+      ]
+    },
+    {
+      "query": "税金を期限までに払えなかったらどうなるか",
+      "relevant": [
+        "yokohama-30"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "徴収を猶予してもらう手続きは何条",
+      "relevant": [
+        "yokohama-7"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "市役所からの督促状はいつまでに発行されますか",
+      "relevant": [
+        "yokohama-31"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "災害や病気で申告できなかったときの救済",
+      "relevant": [
+        "yokohama-39"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "普通徴収の納税通知書はいつまでに納税者へ届くか",
+      "relevant": [
+        "yokohama-27"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "ふるさと納税で寄附金税額控除を受けるための申告は",
+      "relevant": [
+        "yokohama-73"
+      ],
+      "tags": [
+        "definition",
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "不動産を 5 年超持ってから売った場合の市民税",
+      "relevant": [
+        "yokohama-395"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "公示送達はどう行うか",
+      "relevant": [
+        "yokohama-26"
+      ],
+      "tags": [
+        "procedure"
+      ]
+    },
+    {
+      "query": "市たばこ税は誰が納めますか",
+      "relevant": [
+        "yokohama-287"
+      ],
+      "tags": [
+        "definition",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "鉱泉浴場の経営者の役割",
+      "relevant": [
+        "yokohama-326"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "新築の長期優良住宅は固定資産税が減額されますか",
+      "relevant": [
+        "yokohama-416"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "課税ミスでもらいすぎた税金や取り損ねた税金の処理",
+      "relevant": [
+        "yokohama-6"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "事業所税の事業所等とはどんな場所",
+      "relevant": [
+        "yokohama-331"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "都市計画税の納期は何回に分かれているか",
+      "relevant": [
+        "yokohama-351"
+      ],
+      "tags": [
+        "procedure",
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "事業所税の納税義務者",
+      "relevant": [
+        "yokohama-331"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    },
+    {
+      "query": "市税徴収のための条例の施行に必要な事項は誰が定めるか",
+      "relevant": [
+        "yokohama-41"
+      ],
+      "tags": [
+        "paraphrase",
+        "hard"
+      ]
+    }
+  ],
+  "name": "yokohama-shizei-doc-id-v1"
+}
