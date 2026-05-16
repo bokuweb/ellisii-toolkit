@@ -46,6 +46,16 @@ struct ThesaurusEntry {
     scenarios: Vec<String>,
 }
 
+/// JSON は comment 構文を許さないため、辞書本文に section header コメントを
+/// `"____comment_*"` 形式の string value で混在させている。enrich 時には
+/// untagged enum で section header (= string) を読み飛ばす。
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ThesaurusValue {
+    Entry(ThesaurusEntry),
+    Comment(String),
+}
+
 #[derive(Debug, Deserialize)]
 struct Thesaurus {
     #[allow(dead_code)]
@@ -53,7 +63,16 @@ struct Thesaurus {
     #[allow(dead_code)]
     #[serde(default)]
     comment: String,
-    entries: BTreeMap<String, ThesaurusEntry>,
+    entries: BTreeMap<String, ThesaurusValue>,
+}
+
+impl Thesaurus {
+    fn iter_entries(&self) -> impl Iterator<Item = (&String, &ThesaurusEntry)> + '_ {
+        self.entries.iter().filter_map(|(k, v)| match v {
+            ThesaurusValue::Entry(e) => Some((k, e)),
+            ThesaurusValue::Comment(_) => None,
+        })
+    }
 }
 
 fn fixture_dir() -> PathBuf {
@@ -83,9 +102,8 @@ fn match_terms<'a>(entry: &CorpusEntry, thesaurus: &'a Thesaurus) -> Vec<&'a str
         entry.text.chars().take(200).collect::<String>()
     );
     let mut keys: Vec<&str> = thesaurus
-        .entries
-        .keys()
-        .map(String::as_str)
+        .iter_entries()
+        .map(|(k, _)| k.as_str())
         .filter(|k| probe.contains(*k))
         .collect();
     // 長い key を先頭に (例: "法定相続分" を "相続" より優先)
@@ -124,7 +142,7 @@ fn main() -> anyhow::Result<()> {
         }
         let mut additions: Vec<String> = Vec::new();
         for k in &hit_keys {
-            if let Some(te) = thesaurus.entries.get(*k) {
+            if let Some(ThesaurusValue::Entry(te)) = thesaurus.entries.get(*k) {
                 additions.extend(te.synonyms.iter().cloned());
                 additions.extend(te.scenarios.iter().cloned());
             }

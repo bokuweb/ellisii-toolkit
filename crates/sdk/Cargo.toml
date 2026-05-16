@@ -81,3 +81,4 @@ ellisii-core.workspace = true
 unicode-normalization = "0.1"
 ellisii-llm-core.workspace = true
 rusqlite = { version = "0.32", features = ["bundled"] }
+regex = "1"
