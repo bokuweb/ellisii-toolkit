@@ -146,92 +146,90 @@ async fn run() -> anyhow::Result<()> {
     store_base.upsert(nb, &chunks_base, &embs_base).await?;
     store_enr.upsert(nb, &chunks_enriched, &embs_enr).await?;
 
-    let opts = SearchOptions {
-        top_k: 5,
-        semantic_weight: 0.5,
-        caption_rerank: true,
-        ..Default::default()
-    };
+    for cap in [true, false] {
+        let opts = SearchOptions {
+            top_k: 5,
+            semantic_weight: 0.5,
+            caption_rerank: cap,
+            ..Default::default()
+        };
 
-    let mut pairs_base: Vec<(Vec<String>, Vec<String>)> = Vec::new();
-    let mut pairs_enr: Vec<(Vec<String>, Vec<String>)> = Vec::new();
-    let mut swaps_rescue: Vec<(String, String)> = Vec::new(); // baseline ✗ → enriched ✓
-    let mut swaps_regress: Vec<(String, String)> = Vec::new(); // baseline ✓ → enriched ✗
+        let mut pairs_base: Vec<(Vec<String>, Vec<String>)> = Vec::new();
+        let mut pairs_enr: Vec<(Vec<String>, Vec<String>)> = Vec::new();
+        let mut swaps_rescue: Vec<(String, String)> = Vec::new();
+        let mut swaps_regress: Vec<(String, String)> = Vec::new();
 
-    for item in &gold.items {
-        let hits_b = engine_base.search(&item.query, opts.clone()).await?;
-        let hits_e = engine_enr.search(&item.query, opts.clone()).await?;
-        let pred_b: Vec<String> = hits_b
-            .iter()
-            .map(|h| id_map.get(&h.chunk.id).cloned().unwrap_or_default())
-            .collect();
-        let pred_e: Vec<String> = hits_e
-            .iter()
-            .map(|h| id_map.get(&h.chunk.id).cloned().unwrap_or_default())
-            .collect();
+        for item in &gold.items {
+            let hits_b = engine_base.search(&item.query, opts.clone()).await?;
+            let hits_e = engine_enr.search(&item.query, opts.clone()).await?;
+            let pred_b: Vec<String> = hits_b
+                .iter()
+                .map(|h| id_map.get(&h.chunk.id).cloned().unwrap_or_default())
+                .collect();
+            let pred_e: Vec<String> = hits_e
+                .iter()
+                .map(|h| id_map.get(&h.chunk.id).cloned().unwrap_or_default())
+                .collect();
 
-        let hit_b = hit_at_k(&pred_b, &item.relevant, 5) > 0.5;
-        let hit_e = hit_at_k(&pred_e, &item.relevant, 5) > 0.5;
-        let exp = item.relevant.first().cloned().unwrap_or_default();
-        match (hit_b, hit_e) {
-            (false, true) => swaps_rescue.push((exp, item.query.clone())),
-            (true, false) => swaps_regress.push((exp, item.query.clone())),
-            _ => {}
+            let hit_b = hit_at_k(&pred_b, &item.relevant, 5) > 0.5;
+            let hit_e = hit_at_k(&pred_e, &item.relevant, 5) > 0.5;
+            let exp = item.relevant.first().cloned().unwrap_or_default();
+            match (hit_b, hit_e) {
+                (false, true) => swaps_rescue.push((exp, item.query.clone())),
+                (true, false) => swaps_regress.push((exp, item.query.clone())),
+                _ => {}
+            }
+
+            pairs_base.push((pred_b, item.relevant.clone()));
+            pairs_enr.push((pred_e, item.relevant.clone()));
         }
 
-        pairs_base.push((pred_b, item.relevant.clone()));
-        pairs_enr.push((pred_e, item.relevant.clone()));
-    }
+        let n = pairs_base.len() as f32;
+        let hit5 = |pairs: &[(Vec<String>, Vec<String>)]| -> f32 {
+            pairs.iter().map(|(p, r)| hit_at_k(p, r, 5)).sum::<f32>() / n
+        };
+        let mrr = |pairs: &[(Vec<String>, Vec<String>)]| -> f32 {
+            pairs
+                .iter()
+                .map(|(p, r)| reciprocal_rank(p, r))
+                .sum::<f32>()
+                / n
+        };
+        let (hit5_b, hit5_e) = (hit5(&pairs_base), hit5(&pairs_enr));
+        let (mrr_b, mrr_e) = (mrr(&pairs_base), mrr(&pairs_enr));
 
-    let n = pairs_base.len() as f32;
-    let hit5_b: f32 = pairs_base
-        .iter()
-        .map(|(p, r)| hit_at_k(p, r, 5))
-        .sum::<f32>()
-        / n;
-    let hit5_e: f32 = pairs_enr
-        .iter()
-        .map(|(p, r)| hit_at_k(p, r, 5))
-        .sum::<f32>()
-        / n;
-    let mrr_b: f32 = pairs_base
-        .iter()
-        .map(|(p, r)| reciprocal_rank(p, r))
-        .sum::<f32>()
-        / n;
-    let mrr_e: f32 = pairs_enr
-        .iter()
-        .map(|(p, r)| reciprocal_rank(p, r))
-        .sum::<f32>()
-        / n;
+        println!(
+            "\n=== {} (n={}, k=5, bigram, cap rerank={}) ===",
+            name,
+            pairs_base.len(),
+            if cap { "on" } else { "off" }
+        );
+        println!("| variant            | hit@5 | MRR    |");
+        println!("|--------------------|------:|-------:|");
+        println!("| baseline           | {:.3} | {:.3} |", hit5_b, mrr_b);
+        println!(
+            "| **enriched (v5)**  | **{:.3}** | **{:.3}** |",
+            hit5_e, mrr_e
+        );
+        println!(
+            "| Δ                  | {:+.3} | {:+.3} |",
+            hit5_e - hit5_b,
+            mrr_e - mrr_b
+        );
 
-    println!(
-        "\n=== {} (n={}, k=5, bigram, cap rerank=on) ===",
-        name,
-        pairs_base.len()
-    );
-    println!("| variant            | hit@5 | MRR    |");
-    println!("|--------------------|------:|-------:|");
-    println!("| baseline           | {:.3} | {:.3} |", hit5_b, mrr_b);
-    println!(
-        "| **enriched (v5)**  | **{:.3}** | **{:.3}** |",
-        hit5_e, mrr_e
-    );
-    println!(
-        "| Δ                  | {:+.3} | {:+.3} |",
-        hit5_e - hit5_b,
-        mrr_e - mrr_b
-    );
-
-    println!("\nrescue (baseline ✗ → enriched ✓): {}", swaps_rescue.len());
-    for (exp, q) in &swaps_rescue {
-        let q: String = q.chars().take(60).collect();
-        println!("  + {exp}  {q}");
-    }
-    println!("regress (baseline ✓ → enriched ✗): {}", swaps_regress.len());
-    for (exp, q) in &swaps_regress {
-        let q: String = q.chars().take(60).collect();
-        println!("  - {exp}  {q}");
+        println!(
+            "rescue (baseline ✗ → enriched ✓): {} / regress: {}",
+            swaps_rescue.len(),
+            swaps_regress.len()
+        );
+        for (exp, q) in &swaps_rescue {
+            let q: String = q.chars().take(60).collect();
+            println!("  + {exp}  {q}");
+        }
+        for (exp, q) in &swaps_regress {
+            let q: String = q.chars().take(60).collect();
+            println!("  - {exp}  {q}");
+        }
     }
 
     Ok(())
