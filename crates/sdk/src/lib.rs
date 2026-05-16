@@ -907,6 +907,59 @@ const DEFAULT_RAG_SYSTEM: &str = "あなたは厳密な参考文献付きアシ�
 /// the snapshot without copying.
 type CaptionListCache = std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>;
 
+/// [`Ellisii::recommend_caption_enrichment`] が返す推奨。
+///
+/// Run 12k-12n の cross-corpus A/B から導かれた provisional しきい値
+/// (q-cap match=0.20 中央境界) を使う。詳細は
+/// `docs/eval/recall-evals.md` Run 12m / 12n 参照。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EnrichmentRecommendation {
+    /// 推奨: `with_caption_enrichment_default()` ON
+    /// **かつ** `SearchOptions::caption_rerank = false`。
+    /// query↔caption の literal gap が大きく、scenario 拡張が paraphrase
+    /// gap を橋渡しすることが期待できる。
+    On {
+        /// 観測された q-cap match (~0.0-0.15)
+        q_cap_match: f32,
+    },
+    /// 推奨: enrichment OFF。query が既に caption と literal match していて、
+    /// scenario suffix が caption boost を dilute する可能性が高い。
+    Off {
+        /// 観測された q-cap match (~0.25-)
+        q_cap_match: f32,
+    },
+    /// 中間帯 (0.15 ≦ q-cap match < 0.25)。自前 A/B (`eval_enrichment_ab`)
+    /// で実測してから判断するのが安全。
+    Uncertain {
+        /// 観測された q-cap match (~0.15-0.25)
+        q_cap_match: f32,
+    },
+}
+
+impl EnrichmentRecommendation {
+    /// 観測 q-cap match の生値。
+    pub fn q_cap_match(&self) -> f32 {
+        match self {
+            Self::On { q_cap_match }
+            | Self::Off { q_cap_match }
+            | Self::Uncertain { q_cap_match } => *q_cap_match,
+        }
+    }
+
+    /// `with_caption_enrichment_default()` を ON にすべきか。
+    /// `Uncertain` は `false` を返す (退行リスク回避を優先)。
+    pub fn enrichment_on(&self) -> bool {
+        matches!(self, Self::On { .. })
+    }
+
+    /// 推奨される `SearchOptions::caption_rerank` 値。
+    /// `On` のとき `false` (enrichment と cap rerank は Run 12l で排他と判明)、
+    /// それ以外は `true` (既存 SearchOptions の default)。
+    pub fn caption_rerank(&self) -> bool {
+        !matches!(self, Self::On { .. })
+    }
+}
+
 pub struct Ellisii {
     embedder: Arc<dyn Embedder>,
     store: Arc<dyn VectorStore>,
@@ -1848,6 +1901,58 @@ impl Ellisii {
             return Ok(0.0);
         }
         Ok(ellisii_rag::query_title_match_mean(queries, &titles))
+    }
+
+    /// `with_caption_enrichment_default()` を ON にすべきか、サンプルクエリ
+    /// 群から自動推奨する。
+    ///
+    /// Run 12k-12n の cross-corpus A/B (8 fixture, 全件 sign-correct) で
+    /// 校正された **q-cap match (query↔caption literal match)** 信号を使う:
+    ///
+    /// - `< 0.15` → [`EnrichmentRecommendation::On`] (paraphrase gap が大きい)
+    /// - `>= 0.25` → [`EnrichmentRecommendation::Off`] (caption が既に key)
+    /// - 中間帯 → [`EnrichmentRecommendation::Uncertain`] (自前 A/B 推奨)
+    ///
+    /// 推奨される [`SearchOptions::caption_rerank`] とのペアリングは
+    /// [`EnrichmentRecommendation::caption_rerank`] / [`Self::enrichment_on`]
+    /// を参照。
+    ///
+    /// `sample_queries` は production の代表的クエリを 20-30 件渡せば十分
+    /// (signal は char-bigram の平均で安定する)。corpus に caption が
+    /// 無い場合は信号無効として常に `Uncertain` を返す。
+    ///
+    /// 実装: `all_captions` の上限 256 件をサンプルし、
+    /// `ellisii_rag::query_title_match_mean(queries, captions)` を計算。
+    ///
+    /// 経緯と閾値の根拠は `docs/eval/recall-evals.md` Run 12m / 12n 参照。
+    pub async fn recommend_caption_enrichment<S: AsRef<str>>(
+        &self,
+        sample_queries: &[S],
+    ) -> Result<EnrichmentRecommendation> {
+        const ON_THRESHOLD: f32 = 0.15;
+        const OFF_THRESHOLD: f32 = 0.25;
+        if sample_queries.is_empty() {
+            return Ok(EnrichmentRecommendation::Uncertain { q_cap_match: 0.0 });
+        }
+        let captions_arc = self.captions().await?;
+        let captions: Vec<&str> = captions_arc
+            .iter()
+            .take(256)
+            .map(|(_, c)| c.as_str())
+            .filter(|s| !s.trim().is_empty())
+            .collect();
+        if captions.is_empty() {
+            return Ok(EnrichmentRecommendation::Uncertain { q_cap_match: 0.0 });
+        }
+        let q_cap_match = ellisii_rag::query_title_match_mean(sample_queries, &captions);
+        let rec = if q_cap_match < ON_THRESHOLD {
+            EnrichmentRecommendation::On { q_cap_match }
+        } else if q_cap_match >= OFF_THRESHOLD {
+            EnrichmentRecommendation::Off { q_cap_match }
+        } else {
+            EnrichmentRecommendation::Uncertain { q_cap_match }
+        };
+        Ok(rec)
     }
 
     /// 検索 → LLM stream で RAG 回答。`with_llm_*` で LLM を組み込んでいない場合は
