@@ -123,28 +123,49 @@ impl EllisiiBuilder {
     /// だけ作る, ...)` のように展開し、シナリオ → 法律ターム の paraphrase gap
     /// を retrieval 側で吸収する。pure string match、<1 ms / chunk、LLM 不要。
     ///
-    /// # **注意 — 無条件 ON はおすすめできない**
+    /// # **注意 — `caption_rerank=false` との併用を強く推奨**
     ///
-    /// Run 12k ([recall-evals.md](https://github.com/bokuweb/ellisii/blob/main/docs/eval/recall-evals.md))
-    /// の 5 corpora A/B で、**query 性質によって net 効果が反転する**ことが
-    /// 確認されている:
+    /// Run 12k / 12l ([recall-evals.md](https://github.com/bokuweb/ellisii/blob/main/docs/eval/recall-evals.md))
+    /// で 5 corpora × `caption_rerank` 2 値 = 10 条件 A/B を取った結果、
+    /// `caption_rerank=true` (= [`SearchOptions::caption_rerank`] の default) と
+    /// 併用すると、append された「シナリオ: ...」 suffix が caption 部一致
+    /// boost を dilute して **net 退行が増幅**される (e.g. workplace-regs:
+    /// cap=on で hit -7.5pp/MRR -14.0pp、cap=off で hit -2.5pp/MRR -5.3pp)。
+    /// 同時に、enrichment が効く civil-law-hard でも cap=off の方が **更に
+    /// 強い改善** (MRR Δ +0.182 → +0.295)。
     ///
-    /// | corpus | hit@5 Δ | MRR Δ | 判定 |
-    /// |---|---:|---:|---|
-    /// | jp-civil-law-hard (paraphrase) | +0.143 | +0.182 | win |
-    /// | jp-cs-wiki-hard | +0.026 | +0.010 | mild win |
-    /// | jp-tokkyo-hou | +0.016 | -0.080 | mixed |
-    /// | jp-workplace-regs (literal lookup) | **-0.075** | **-0.140** | **退行** |
+    /// つまり enrichment と cap rerank は実質 **排他**。enrichment を ON に
+    /// するなら `caption_rerank=false` を `SearchOptions` / `AskOptions` で
+    /// 明示すること。
     ///
-    /// **推奨**: 「シナリオ表現 → 法律ターム」の paraphrase が頻発するアプリ
-    /// (民事相談チャット, 法律 Q&A 等) では ON。逆に「第◯条」「3 歳未満」「60
-    /// 時間」のような **specific keyword lookup** が中心の corpus (就業規則
-    /// 検索, 条文番号引き) では OFF または個別評価を推奨。判断材料が無い場合は
-    /// 自前 fixture で `ELLISII_EVAL_FIXTURE=<name> cargo run -p ellisii-sdk
-    /// --features static-jp --example eval_enrichment_ab --release` の A/B を
-    /// 取ってから default にする。
+    /// ## 5 corpora × 2 cap モードの実測値 (k=5, bigram, w=0.5)
     ///
-    /// 経緯は `docs/eval/recall-evals.md` Run 12d-12k を参照。
+    /// | corpus | cap=on hit/MRR Δ | cap=off hit/MRR Δ |
+    /// |---|---:|---:|
+    /// | jp-civil-law-hard | +0.143 / +0.182 | **+0.143 / +0.295** |
+    /// | jp-labor-law | ±0 / +0.014 | ±0 / -0.043 |
+    /// | jp-cs-wiki-hard | +0.026 / +0.010 | +0.026 / +0.010 |
+    /// | **jp-workplace-regs** | **-0.075 / -0.140** | **-0.025 / -0.053** |
+    /// | jp-tokkyo-hou | +0.016 / -0.080 | -0.016 / -0.054 |
+    ///
+    /// cap=off にしても workplace-regs / tokkyo-hou は完全には戻らない
+    /// (= scenario phrases が embedding ベクトル自体を引っ張る残留効果)。
+    /// 「specific keyword lookup」が中心の corpus (就業規則 / 条文番号引き)
+    /// では enrichment 自体を OFF にする方が良い。
+    ///
+    /// ## 判断材料が無い場合の measurement
+    ///
+    /// 自前 fixture (`corpus.json` + `golden.json`) で:
+    ///
+    /// ```sh
+    /// ELLISII_EVAL_FIXTURE=<name> cargo run -p ellisii-sdk \
+    ///   --features static-jp --example eval_enrichment_ab --release
+    /// ```
+    ///
+    /// → 4 セル (baseline/enriched × cap on/off) を一度に出すので、
+    /// default にしてよいかを直接判定できる。
+    ///
+    /// 経緯は `docs/eval/recall-evals.md` Run 12d-12l を参照。
     pub fn with_caption_enrichment_default(self) -> Self {
         let thes = Arc::new(ellisii_jp_law_thesaurus::LawThesaurus::bundled());
         self.with_caption_enricher(thes)
