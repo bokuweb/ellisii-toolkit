@@ -206,6 +206,58 @@ impl EllisiiBuilder {
         self.with_store_sqlite_with_tokenizer(db_path, dim, Arc::new(tok))
     }
 
+    /// **コーパスに合った tokenizer を自動選択** して sqlite ストアを開く
+    /// (Run 8 / 6 corpus 横展開を根拠とした defensible default)。
+    ///
+    /// 動作:
+    /// - `delarocha_dict` が `Some(path)` で `feature = "delarocha"` の両方が
+    ///   揃っていれば **delarocha + NFKC** で開く (6 corpus で常に bigram
+    ///   以上、悪化させたケースは無いという経験則)。
+    /// - そうでなければ **bigram + NFKC** で開く (依存ゼロ・ranker は揃う)。
+    ///
+    /// `sample_texts` は判断の診断 signals (英字比率 / zenkaku digit /
+    /// kanji digit) を [`ellisii_jp_tokenizer_core::recommend_tokenizer`] に
+    /// 流して `tracing::info!` で出力する。`None` を渡すと signals は出力されない
+    /// (= tokenizer 選択ロジック自体には影響しない)。
+    pub fn with_store_sqlite_auto<P: AsRef<Path>>(
+        self,
+        db_path: P,
+        dim: usize,
+        delarocha_dict: Option<&Path>,
+        sample_texts: Option<&[&str]>,
+    ) -> Result<Self> {
+        let dict_available = delarocha_dict.is_some() && cfg!(feature = "delarocha");
+        if let Some(samples) = sample_texts {
+            let (pick, sig) = ellisii_jp_tokenizer_core::recommend_tokenizer(
+                samples.iter().copied(),
+                dict_available,
+            );
+            tracing::info!(
+                "tokenizer_auto: pick={:?} chars={} en_ratio={:.3} zen_digit={} kanji_digit={}",
+                pick,
+                sig.total_chars,
+                sig.en_ratio,
+                sig.has_zenkaku_digit,
+                sig.has_kanji_digit,
+            );
+        }
+        #[cfg(feature = "delarocha")]
+        {
+            if let Some(dict) = delarocha_dict {
+                use ellisii_jp_tokenizer_delarocha::DelarochaTokenizer;
+                let inner = DelarochaTokenizer::from_path(dict)
+                    .map_err(|e| Error::Store(format!("load delarocha: {e}")))?;
+                let nfkc: Arc<dyn JpTokenizer> = Arc::new(
+                    ellisii_jp_tokenizer_nfkc::NfkcTokenizer::new(Arc::new(inner)),
+                );
+                return self.with_store_sqlite_with_tokenizer(db_path, dim, nfkc);
+            }
+        }
+        #[cfg(not(feature = "delarocha"))]
+        let _ = delarocha_dict;
+        self.with_store_sqlite_nfkc(db_path, dim)
+    }
+
     /// 任意の [`LlmBackend`] 実装を渡す。指定すると [`Ellisii::ask`] が使えるようになる。
     pub fn with_llm(mut self, llm: Arc<dyn LlmBackend>) -> Self {
         self.llm = Some(llm);
