@@ -46,6 +46,8 @@ llamacpp = ["dep:ellisii-llm-llamacpp", "ellisii-llm-llamacpp/gguf"]
 static-jp = ["dep:ellisii-embed-static-jp"]
 # Provence ONNX (cross-encoder rerank / context compressor)
 provence-onnx = ["dep:ellisii-provence-onnx", "ellisii-provence-onnx/real"]
+# Vaporetto (morpheme tokenizer for FTS5). 主に eval/sample 用途。
+vaporetto = ["dep:ellisii-jp-tokenizer-vaporetto", "ellisii-jp-tokenizer-vaporetto/real"]
 
 [dependencies.ellisii-llm-llamacpp]
 workspace = true
@@ -56,6 +58,10 @@ workspace = true
 optional = true
 
 [dependencies.ellisii-provence-onnx]
+workspace = true
+optional = true
+
+[dependencies.ellisii-jp-tokenizer-vaporetto]
 workspace = true
 optional = true
 

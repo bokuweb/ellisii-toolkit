@@ -1400,6 +1400,7 @@ dependencies = [
  "ellisii-ingest",
  "ellisii-jp-tokenizer-bigram",
  "ellisii-jp-tokenizer-core",
+ "ellisii-jp-tokenizer-vaporetto",
  "ellisii-llm-core",
  "ellisii-llm-llamacpp",
  "ellisii-llm-stub",
