@@ -1539,6 +1539,7 @@ dependencies = [
  "ellisii-store-memory",
  "ellisii-store-sqlite",
  "futures-util",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",
