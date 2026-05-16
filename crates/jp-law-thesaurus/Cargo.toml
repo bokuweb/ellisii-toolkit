@@ -1,0 +1,14 @@
+[package]
+name = "ellisii-jp-law-thesaurus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "日本法令 / 法律 / 例規 / 規程 / 特許 / 契約書 / 判例 系の法律ターム ↔ 日常シナリオ表現を集めた静的辞書と、それで chunk caption を enrich するためのユーティリティ。"
+
+[dependencies]
+ellisii-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+uuid.workspace = true

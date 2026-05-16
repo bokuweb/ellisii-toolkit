@@ -76,6 +76,11 @@ pub struct Ingestor<E: Embedder, S: VectorStore> {
     /// に `ocr/v1/<bucket>/page-<N>.json` という構成で per-page 結果を保存。
     /// 同一 PDF の再 ingest 時に OCR 部分を完全に skip できる。
     pub ocr_cache_dir: Option<PathBuf>,
+    /// chunker 通過後の chunk を任意に enrich するためのフック。
+    /// 法令系 user は `ellisii_jp_law_thesaurus::LawThesaurus::bundled()` を
+    /// `Arc::new` で渡せば、シナリオ → 法律ターム の paraphrase gap を
+    /// 静的辞書で埋められる (`docs/eval/recall-evals.md` Run 12d-12h)。
+    pub caption_enricher: Option<Arc<dyn ellisii_core::CaptionEnricher>>,
 }
 
 impl<E: Embedder, S: VectorStore> Ingestor<E, S> {
@@ -89,7 +94,17 @@ impl<E: Embedder, S: VectorStore> Ingestor<E, S> {
             chunker: None,
             batch_size: 16,
             ocr_cache_dir: None,
+            caption_enricher: None,
         }
+    }
+
+    /// chunker 通過後の chunk を任意のロジックで enrich する。
+    pub fn with_caption_enricher(
+        mut self,
+        enricher: Arc<dyn ellisii_core::CaptionEnricher>,
+    ) -> Self {
+        self.caption_enricher = Some(enricher);
+        self
     }
 
     /// 任意の `Chunker` 実装をセット。`None` のまま build すると `DefaultChunker`
@@ -245,10 +260,18 @@ impl<E: Embedder, S: VectorStore> Ingestor<E, S> {
             blocks: parsed.blocks.len(),
         });
 
-        let chunks = match &self.chunker {
+        let mut chunks = match &self.chunker {
             Some(c) => c.chunk(&parsed, source_id),
             None => DefaultChunker::new(self.chunk_config).chunk(&parsed, source_id),
         };
+        if let Some(enricher) = &self.caption_enricher {
+            let n = enricher.enrich_chunks(&mut chunks);
+            tracing::debug!(
+                "caption enrichment: {} / {} chunks enriched",
+                n,
+                chunks.len()
+            );
+        }
         emit(Progress::Chunked {
             source_id,
             chunks: chunks.len(),

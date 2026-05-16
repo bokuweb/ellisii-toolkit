@@ -1180,6 +1180,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ellisii-jp-law-thesaurus"
+version = "0.1.0"
+dependencies = [
+ "ellisii-core",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "ellisii-jp-tokenizer-bigram"
 version = "0.1.0"
 dependencies = [
@@ -1517,6 +1527,7 @@ dependencies = [
  "ellisii-embed-dummy",
  "ellisii-embed-static-jp",
  "ellisii-ingest",
+ "ellisii-jp-law-thesaurus",
  "ellisii-jp-tokenizer-bigram",
  "ellisii-jp-tokenizer-core",
  "ellisii-jp-tokenizer-delarocha",
