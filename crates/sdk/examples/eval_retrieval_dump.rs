@@ -81,11 +81,14 @@ async fn run() -> anyhow::Result<()> {
     use ellisii_jp_tokenizer_delarocha::DelarochaTokenizer;
 
     let dir = fixture_dir();
+    let corpus_file =
+        std::env::var("ELLISII_EVAL_CORPUS").unwrap_or_else(|_| "corpus.json".to_string());
     let corpus: Vec<CorpusEntry> =
-        serde_json::from_str(&std::fs::read_to_string(dir.join("corpus.json"))?)?;
+        serde_json::from_str(&std::fs::read_to_string(dir.join(&corpus_file))?)?;
     eprintln!(
-        "fixture: {}\ncorpus: {} chunks",
+        "fixture: {}/{}\ncorpus: {} chunks",
         dir.display(),
+        corpus_file,
         corpus.len()
     );
 
