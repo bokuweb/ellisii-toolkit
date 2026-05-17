@@ -72,6 +72,22 @@ fn predict(q_cap_match: f32) -> &'static str {
     }
 }
 
+/// caption 長 (chars) の平均。Run 12r 仮説: OFF 域でも短い caption
+/// (= article-title-style) は dilute に強い、長い caption (= 規程パラグラフ)
+/// は dilute に弱い。
+fn caption_len_mean(corpus: &[CorpusEntry]) -> f32 {
+    let lens: Vec<f32> = corpus
+        .iter()
+        .filter(|e| !e.caption.is_empty())
+        .map(|e| e.caption.chars().count() as f32)
+        .collect();
+    if lens.is_empty() {
+        0.0
+    } else {
+        lens.iter().sum::<f32>() / lens.len() as f32
+    }
+}
+
 fn corpus_paraphrase_score(corpus: &[CorpusEntry]) -> f32 {
     const SAMPLE_LIMIT: usize = 256;
     let take = corpus.len().min(SAMPLE_LIMIT);
@@ -112,10 +128,10 @@ fn main() -> anyhow::Result<()> {
     };
 
     println!(
-        "| fixture                | n    | paraphrase | q_specific% | q-cap match | q-body recall | MRR Δ  | 12l 判定       | 12m 予測   |"
+        "| fixture                | n    | cap_len | paraphrase | q_specific% | q-cap match | q-body recall | MRR Δ  | 12l 判定       | 12m 予測   |"
     );
     println!(
-        "|------------------------|-----:|-----------:|------------:|------------:|--------------:|-------:|----------------|------------|"
+        "|------------------------|-----:|--------:|-----------:|------------:|------------:|--------------:|-------:|----------------|------------|"
     );
 
     for name in &fixtures {
@@ -125,6 +141,7 @@ fn main() -> anyhow::Result<()> {
         let golden: GoldenFile = serde_json::from_str(&std::fs::read_to_string(&golden_path)?)?;
         let queries: Vec<&str> = golden.items.iter().map(|i| i.query.as_str()).collect();
 
+        let cap_len = caption_len_mean(&corpus);
         let paraphrase = corpus_paraphrase_score(&corpus);
         let q_specific_pct = if queries.is_empty() {
             0.0
@@ -152,9 +169,10 @@ fn main() -> anyhow::Result<()> {
         };
         let pred = predict(q_cap_match);
         println!(
-            "| {:<22} | {:>4} | {:>10.3} | {:>10.1}% | {:>11.3} | {:>13.3} | {:>6} | {:<14} | {:<10} |",
+            "| {:<22} | {:>4} | {:>7.1} | {:>10.3} | {:>10.1}% | {:>11.3} | {:>13.3} | {:>6} | {:<14} | {:<10} |",
             name,
             corpus.len(),
+            cap_len,
             paraphrase,
             q_specific_pct,
             q_cap_match,
