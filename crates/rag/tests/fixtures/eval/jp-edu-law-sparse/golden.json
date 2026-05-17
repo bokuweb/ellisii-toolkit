@@ -1,0 +1,78 @@
+{
+  "name": "jp-edu-law-sparse-v1",
+  "_note": "Run 12bb: jp-edu-law の sparse 版 (body から v8 synonym を — に置換)。v8 enrichment の synonym bridge 効果を直接抽出。",
+  "items": [
+    {
+      "query": "学校教育法施行令と施行規則の関係",
+      "relevant": [
+        "edu-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "小学校と中学校の9年間就学義務",
+      "relevant": [
+        "edu-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "学校法人が設置主体となる学校",
+      "relevant": [
+        "edu-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "地方教育行政法と教育長の役割",
+      "relevant": [
+        "edu-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "学校保健計画と学校安全計画の策定",
+      "relevant": [
+        "edu-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "学校感染症による出席停止期間",
+      "relevant": [
+        "edu-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "いじめの重大事態への対処",
+      "relevant": [
+        "edu-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "学校給食実施基準の栄養量",
+      "relevant": [
+        "edu-8"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    }
+  ]
+}

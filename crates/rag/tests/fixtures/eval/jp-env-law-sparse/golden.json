@@ -1,0 +1,96 @@
+{
+  "name": "jp-env-law-sparse-v1",
+  "_note": "Run 12bb: jp-env-law の sparse 版 (body から v8 synonym を — に置換)。v8 enrichment の synonym bridge 効果を直接抽出。",
+  "items": [
+    {
+      "query": "廃掃法による生活環境の保全",
+      "relevant": [
+        "env-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "20種類の産業廃棄物の適正処理",
+      "relevant": [
+        "env-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "感染性廃棄物とPCB廃棄物の取り扱い",
+      "relevant": [
+        "env-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "産業廃棄物管理票の電子化",
+      "relevant": [
+        "env-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "排出者責任と委託基準の遵守",
+      "relevant": [
+        "env-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "環境保全施策の基本となる事項",
+      "relevant": [
+        "env-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "典型7公害のうち土壌汚染",
+      "relevant": [
+        "env-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "環境アセスメントの配慮書段階",
+      "relevant": [
+        "env-8"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "形質変更時要届出区域への指定",
+      "relevant": [
+        "env-9"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "化学物質排出移動量届出制度のMSDS",
+      "relevant": [
+        "env-10"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    }
+  ]
+}
