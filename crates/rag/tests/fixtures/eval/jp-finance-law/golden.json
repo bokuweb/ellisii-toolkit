@@ -1,0 +1,32 @@
+{
+  "name": "jp-finance-law-v1",
+  "_note": "Run 12aa: v7 thesaurus の金融系 entries (銀行法・貸金業法・金商法・保険業法) の synonym bridge 効果を測る合成 fixture。queries は v7 synonym を使い、caption と異なる表現で書く。後で sparse-body 版に変換することで baseline の body 経由 hit を消し、enrichment 効果を直接抽出する。",
+  "items": [
+    { "query": "銀行業免許の付与要件", "relevant": ["ginkou-1"], "tags": ["synonym-bridge"] },
+    { "query": "地方銀行と第二地銀の違い", "relevant": ["ginkou-2"], "tags": ["synonym-bridge"] },
+    { "query": "普通預金と定期預金の取り扱い", "relevant": ["ginkou-3"], "tags": ["synonym-bridge"] },
+    { "query": "信用供与の審査と管理", "relevant": ["ginkou-4"], "tags": ["synonym-bridge"] },
+    { "query": "バーゼル規制の自己資本比率", "relevant": ["ginkou-5"], "tags": ["synonym-bridge"] },
+    { "query": "信金の会員資格", "relevant": ["shinkin-1"], "tags": ["synonym-bridge"] },
+    { "query": "信組の組合員から出資", "relevant": ["shinso-1"], "tags": ["synonym-bridge"] },
+    { "query": "貸金業者登録と取扱主任者", "relevant": ["kashikin-1"], "tags": ["synonym-bridge"] },
+    { "query": "年収の3分の1規制の適用範囲", "relevant": ["kashikin-2"], "tags": ["synonym-bridge"] },
+    { "query": "AMLにおける本人確認義務", "relevant": ["hansyu-1"], "tags": ["synonym-bridge"] },
+    { "query": "犯罪収益移転防止法の対象事業者", "relevant": ["hansyu-1"], "tags": ["synonym-bridge"] },
+    { "query": "金商法と証券取引法の沿革", "relevant": ["kinsyo-1"], "tags": ["synonym-bridge"] },
+    { "query": "1項有価証券と2項有価証券の区分", "relevant": ["kinsyo-2"], "tags": ["synonym-bridge"] },
+    { "query": "インサイダー取引と重要事実", "relevant": ["kinsyo-3"], "tags": ["synonym-bridge"] },
+    { "query": "EDINETでの有報の提出", "relevant": ["kinsyo-4"], "tags": ["synonym-bridge"] },
+    { "query": "5%ルールの大量保有報告制度", "relevant": ["kinsyo-5"], "tags": ["synonym-bridge"] },
+    { "query": "TOBによる株式取得手続", "relevant": ["kinsyo-6"], "tags": ["synonym-bridge"] },
+    { "query": "東証適時開示の対象", "relevant": ["kinsyo-7"], "tags": ["synonym-bridge"] },
+    { "query": "ファンドマネージャーの忠実義務", "relevant": ["kinsyo-8"], "tags": ["synonym-bridge"] },
+    { "query": "顧客本位の業務運営と知識・経験・財産", "relevant": ["kinsyo-9"], "tags": ["synonym-bridge"] },
+    { "query": "相場操縦の一類型としての風説の流布", "relevant": ["kinsyo-10"], "tags": ["synonym-bridge"] },
+    { "query": "保険業免許と相互会社の運営", "relevant": ["hoken-1"], "tags": ["synonym-bridge"] },
+    { "query": "生命保険会社と損害保険会社の兼営", "relevant": ["hoken-2"], "tags": ["synonym-bridge"] },
+    { "query": "終身保険と定期保険の保障期間", "relevant": ["hoken-3"], "tags": ["synonym-bridge"] },
+    { "query": "保険料を支払う側と保険金を受け取る側", "relevant": ["hoken-4"], "tags": ["paraphrase"] },
+    { "query": "告知義務違反による契約解除", "relevant": ["hoken-5"], "tags": ["synonym-bridge"] }
+  ]
+}
