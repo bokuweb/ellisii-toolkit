@@ -5,7 +5,7 @@
 //! 「シナリオ → 法律ターム」 paraphrase gap を、LLM を使わず **pure string
 //! match (<1ms/chunk)** で埋める defensive default。法令系コーパスで
 //! 60-97% カバー (Run 12f)、リーガル ecosystem (条文 / 契約書 / 重要事項
-//! 説明書 / 特許明細書 / 判例 / 訴訟手続) を v5 で概ね網羅 (Run 12h)、v6 で規程・税法系を `LiteralOnly` に再分類 (Run 12t)、v7 で医療・薬機・健保・金融・保険を追加 (Run 12w)。
+//! 説明書 / 特許明細書 / 判例 / 訴訟手続) を v5 で概ね網羅 (Run 12h)、v6 で規程・税法系を `LiteralOnly` に再分類 (Run 12t)、v7 で医療・薬機・健保・金融・保険を追加 (Run 12w)、v8 でサイバー・食品・環境・教育を追加 (Run 12y)。
 //!
 //! 典型用途:
 //!
@@ -14,7 +14,7 @@
 //! use ellisii_core::Chunk;
 //! use ellisii_jp_law_thesaurus::LawThesaurus;
 //!
-//! // bundled v7 thesaurus を使う (no I/O)。
+//! // bundled v8 thesaurus を使う (no I/O)。
 //! let thes = Arc::new(LawThesaurus::bundled());
 //!
 //! // chunk 1 つを enrich
@@ -102,7 +102,7 @@ const MAX_KEYS_PER_CHUNK: usize = 3;
 const PROBE_BODY_CHARS: usize = 200;
 
 impl LawThesaurus {
-    /// crate 同梱の v7 thesaurus を `include_str!` でロード。
+    /// crate 同梱の v8 thesaurus を `include_str!` でロード。
     /// I/O ゼロ、起動コスト一度きり。
     pub fn bundled() -> Self {
         let bytes = include_str!("../data/jp-law-thesaurus.json");
@@ -134,7 +134,7 @@ impl LawThesaurus {
         })
     }
 
-    /// 辞書名 (例: `"jp-law-thesaurus-v7"`)。
+    /// 辞書名 (例: `"jp-law-thesaurus-v8"`)。
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn bundled_loads() {
         let t = LawThesaurus::bundled();
-        assert!(t.entry_count() >= 500, "v7 should have 500+ entries");
+        assert!(t.entry_count() >= 600, "v8 should have 600+ entries");
         assert!(t.name().starts_with("jp-law-thesaurus"));
     }
 

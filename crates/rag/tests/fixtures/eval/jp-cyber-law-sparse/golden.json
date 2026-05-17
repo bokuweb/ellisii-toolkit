@@ -1,0 +1,114 @@
+{
+  "name": "jp-cyber-law-sparse-v1",
+  "_note": "Run 12bb: jp-cyber-law の sparse 版 (body から v8 synonym を — に置換)。v8 enrichment の synonym bridge 効果を直接抽出。",
+  "items": [
+    {
+      "query": "不正アクセス行為の禁止等に関する法律の規制対象",
+      "relevant": [
+        "cyber-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "なりすましとセキュリティ・ホール攻撃の違い",
+      "relevant": [
+        "cyber-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "ID・パスワードに該当する情報",
+      "relevant": [
+        "cyber-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "フィッシング行為で取得した認証情報を譲渡",
+      "relevant": [
+        "cyber-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "情報セキュリティの上位概念",
+      "relevant": [
+        "cyber-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "NISCが担う事務局機能",
+      "relevant": [
+        "cyber-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "重要インフラ事業者に含まれる業種",
+      "relevant": [
+        "cyber-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "削除請求への対応としての送信防止措置",
+      "relevant": [
+        "cyber-8"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "開示請求で発信者を特定する制度",
+      "relevant": [
+        "cyber-9"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "新型開示手続による迅速な開示",
+      "relevant": [
+        "cyber-10"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "電気通信事業法4条の基本原則",
+      "relevant": [
+        "cyber-11"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "番号ポータビリティの制度趣旨",
+      "relevant": [
+        "cyber-12"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    }
+  ]
+}
