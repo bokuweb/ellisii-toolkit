@@ -5,7 +5,7 @@
 //! 「シナリオ → 法律ターム」 paraphrase gap を、LLM を使わず **pure string
 //! match (<1ms/chunk)** で埋める defensive default。法令系コーパスで
 //! 60-97% カバー (Run 12f)、リーガル ecosystem (条文 / 契約書 / 重要事項
-//! 説明書 / 特許明細書 / 判例 / 訴訟手続) を v5 で概ね網羅 (Run 12h)。
+//! 説明書 / 特許明細書 / 判例 / 訴訟手続) を v5 で概ね網羅 (Run 12h)、v6 で規程・税法系を `LiteralOnly` に再分類 (Run 12t)。
 //!
 //! 典型用途:
 //!
@@ -14,7 +14,7 @@
 //! use ellisii_core::Chunk;
 //! use ellisii_jp_law_thesaurus::LawThesaurus;
 //!
-//! // bundled v5 thesaurus を使う (no I/O)。
+//! // bundled v6 thesaurus を使う (no I/O)。
 //! let thes = Arc::new(LawThesaurus::bundled());
 //!
 //! // chunk 1 つを enrich
@@ -23,13 +23,32 @@
 //! ```
 //!
 //! ローカルにカスタム辞書がある場合は [`LawThesaurus::from_path`] を使う。
-//! v5 schema は `____comment_*` キーを section header として埋め込む形式で、
+//! v6 schema は v5 互換で、 `____comment_*` キーを section header として埋め込む形式で、
 //! serde untagged enum で skip するようになっている。
 
 use ellisii_core::{CaptionEnricher, Chunk};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
+
+/// enrich 時に caption に追記する phrase の種類を制御する。
+///
+/// v6 (Run 12t) で追加。背景: Run 12k で workplace-regs / yokohama 等の
+/// **literal lookup 系 corpus** では scenarios append が caption boost を
+/// dilute して net 退行することが判明。entry 単位で `LiteralOnly` (synonyms
+/// のみ) を選べるようにし、規程 / 条例 系 term の dilute を抑える。
+#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EnrichMode {
+    /// synonyms + scenarios の両方を caption に append (v5 までの既定挙動)。
+    #[default]
+    Both,
+    /// synonyms のみ append。scenarios は無視。規程 / 条例 系 term など、
+    /// 既に caption に literal match する query が多い場合に使う。
+    LiteralOnly,
+    /// scenarios のみ append。実験用、通常は使わない。
+    ScenarioOnly,
+}
 
 /// 1 件の thesaurus entry。
 #[derive(Debug, Clone, Deserialize)]
@@ -42,6 +61,9 @@ pub struct ThesaurusEntry {
     /// 日常シナリオ表現 (例: "税逃れのために売買契約書だけ作る")。
     #[serde(default)]
     pub scenarios: Vec<String>,
+    /// 何を append するかの制御 (v6 追加、default = Both で v5 と互換)。
+    #[serde(default)]
+    pub enrich_mode: EnrichMode,
 }
 
 /// `____comment_*` キーの section header を skip するための untagged enum。
@@ -80,7 +102,7 @@ const MAX_KEYS_PER_CHUNK: usize = 3;
 const PROBE_BODY_CHARS: usize = 200;
 
 impl LawThesaurus {
-    /// crate 同梱の v5 thesaurus を `include_str!` でロード。
+    /// crate 同梱の v6 thesaurus を `include_str!` でロード。
     /// I/O ゼロ、起動コスト一度きり。
     pub fn bundled() -> Self {
         let bytes = include_str!("../data/jp-law-thesaurus.json");
@@ -112,7 +134,7 @@ impl LawThesaurus {
         })
     }
 
-    /// 辞書名 (例: `"jp-law-thesaurus-v5"`)。
+    /// 辞書名 (例: `"jp-law-thesaurus-v6"`)。
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -131,8 +153,18 @@ impl LawThesaurus {
         let mut additions: Vec<String> = Vec::new();
         for k in &keys {
             if let Some(e) = self.entries.get(*k) {
-                additions.extend(e.synonyms.iter().cloned());
-                additions.extend(e.scenarios.iter().cloned());
+                match e.enrich_mode {
+                    EnrichMode::Both => {
+                        additions.extend(e.synonyms.iter().cloned());
+                        additions.extend(e.scenarios.iter().cloned());
+                    }
+                    EnrichMode::LiteralOnly => {
+                        additions.extend(e.synonyms.iter().cloned());
+                    }
+                    EnrichMode::ScenarioOnly => {
+                        additions.extend(e.scenarios.iter().cloned());
+                    }
+                }
             }
         }
         additions.sort();
@@ -209,7 +241,7 @@ mod tests {
     #[test]
     fn bundled_loads() {
         let t = LawThesaurus::bundled();
-        assert!(t.entry_count() >= 400, "v5 should have 400+ entries");
+        assert!(t.entry_count() >= 400, "v6 should have 400+ entries");
         assert!(t.name().starts_with("jp-law-thesaurus"));
     }
 
@@ -246,5 +278,28 @@ mod tests {
         assert!(chunk
             .text
             .contains("夫が亡くなり子と妻がいる場合の遺産分け方"));
+    }
+
+    #[test]
+    fn literal_only_entry_omits_scenarios() {
+        // v6: "時間外労働" (規程一般 系) は LiteralOnly に分類。caption に
+        // synonyms (時間外労働の取り扱い 等) は乗るが scenarios (残業 等の
+        // dilute するシナリオ表現) は乗らないはず。
+        let t = LawThesaurus::bundled();
+        let raw = "(時間外労働の取り扱い)\n第○条 時間外労働は月45時間を上限とする。";
+        let mut chunk = mk(raw);
+        let changed = t.enrich_chunk(&mut chunk);
+        assert!(changed);
+        let text = &chunk.text;
+        // 「シナリオ:」 suffix 自体は存在する (synonyms が乗るため)
+        assert!(
+            text.contains(" ｜ シナリオ: "),
+            "expected suffix marker, got: {text}"
+        );
+        // ただし「残業」 等の scenario phrase は含まれない (LiteralOnly)
+        assert!(
+            !text.contains("残業代の支払"),
+            "LiteralOnly entry should not append scenarios, got: {text}"
+        );
     }
 }
