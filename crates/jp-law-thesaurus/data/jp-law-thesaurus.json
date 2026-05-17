@@ -1,5 +1,5 @@
 {
-  "name": "jp-law-thesaurus-v7",
+  "name": "jp-law-thesaurus-v8",
   "comment": "日本法令 / 法律 / 例規 / 規程 / 特許 / 契約書 / 特許明細書 / 判例系に共通する法律ターム ↔ 日常シナリオ表現の静的辞書。chunk caption / body に key (法律ターム) が出現したら scenarios と synonyms を caption に append することで、retrieval 時に paraphrase gap を埋める。pure string match で <1ms/chunk、LLM 不要・hallucination 無し。\n\nv1 (105) → v2 (246) → v3 (340) → v4 (385) → v5 (445+, 判例構造 + 民訴/刑訴/行政訴訟/家事 手続用語を追加)。",
   "license": "PolyForm-Noncommercial-1.0.0 (本リポジトリと同等)",
   "source": "一部 e-Gov 法令検索 (https://laws.e-gov.go.jp)、国土交通省 重要事項説明書 雛形 (https://www.mlit.go.jp/totikensangyo/const/)、経済産業省 NDA 雛形、業務委託契約書の典型条項 (公開 explainer 多数) を参考に curate。出典: 政府標準利用規約 (CC BY 4.0 相当) ほか",
@@ -30,6 +30,24 @@
       "scenarios": [],
       "enrich_mode": "literal_only"
     },
+    "HACCP": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "危害分析重要管理点",
+        "HACCPに沿った衛生管理"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "ID・パスワードの不正提供": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "不正取得罪",
+        "保管罪"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "J-PlatPat": {
       "category": "特許検索",
       "synonyms": [
@@ -40,6 +58,32 @@
         "J-PlatPat で先行技術調査",
         "公報の閲覧"
       ]
+    },
+    "MNP": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "番号ポータビリティ",
+        "携帯電話番号持ち運び"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "MVNO": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "仮想移動体通信事業者"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "PRTR": {
+      "category": "PRTR法",
+      "synonyms": [
+        "化学物質排出移動量届出制度",
+        "MSDS"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "____comment_v2_その他重要": "----- v2 expansion: その他重要 -----",
     "____comment_v2_不正競争防止法": "----- v2 expansion: 不正競争防止法 / 営業秘密 -----",
@@ -75,6 +119,16 @@
     "____comment_v5_民訴詳細": "----- v5 expansion: 民事訴訟手続 詳細 -----",
     "____comment_v5_行政訴訟": "----- v5 expansion: 行政訴訟 -----",
     "____comment_v7_medical_finance": "===== v7 (Run 12w): 医療・薬機・健保・金融・保険 (literal_only) =====",
+    "____comment_v8_cyber_food_env": "===== v8 (Run 12y): サイバー・食品・環境・教育・建築・入管 (literal_only) =====",
+    "いじめ防止対策推進法": {
+      "category": "いじめ防止対策推進法",
+      "synonyms": [
+        "いじめの定義",
+        "重大事態"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "ふるさと納税": {
       "category": "税法-地方税",
       "synonyms": [
@@ -84,6 +138,14 @@
       "scenarios": [
         "ふるさと納税で寄附金税額控除を受けるための申告は"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "アクセス制御機能": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "アクセス管理者"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "アスベスト": {
@@ -96,6 +158,22 @@
       "scenarios": [
         "古い建物のアスベスト使用調査"
       ]
+    },
+    "アレルゲン表示": {
+      "category": "食品表示法",
+      "synonyms": [
+        "特定原材料",
+        "卵",
+        "乳",
+        "小麦",
+        "そば",
+        "落花生",
+        "えび",
+        "かに",
+        "くるみ"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "インサイダー": {
       "category": "金商法",
@@ -139,6 +217,33 @@
         "通販を解約したい"
       ]
     },
+    "サイバーセキュリティ": {
+      "category": "サイバーセキュリティ基本法",
+      "synonyms": [
+        "情報セキュリティ",
+        "サイバー攻撃対策"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "サイバーセキュリティ協議会": {
+      "category": "サイバーセキュリティ基本法",
+      "synonyms": [
+        "情報共有",
+        "セプター"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "サイバーセキュリティ戦略本部": {
+      "category": "サイバーセキュリティ基本法",
+      "synonyms": [
+        "NISC",
+        "内閣サイバーセキュリティセンター"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "サブリース": {
       "category": "賃貸借",
       "synonyms": [
@@ -148,6 +253,15 @@
       "scenarios": [
         "大家の許可なく他人に貸した"
       ]
+    },
+    "シックハウス対策": {
+      "category": "建築基準法",
+      "synonyms": [
+        "ホルムアルデヒド",
+        "24時間換気"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "ストレスチェック": {
       "category": "労働安全衛生法",
@@ -206,6 +320,15 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "フィッシング行為": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "フィッシング詐欺",
+        "偽サイト"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "フレックスタイム制": {
       "category": "労働基準法",
       "synonyms": [
@@ -220,12 +343,39 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "プロバイダ責任制限法": {
+      "category": "プロバイダ責任制限法",
+      "synonyms": [
+        "特定電気通信役務提供者の損害賠償責任の制限等に関する法律"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "マニフェスト": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "産業廃棄物管理票",
+        "電子マニフェスト",
+        "JWNET"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "マネー・ローンダリング対策": {
       "category": "犯収法",
       "synonyms": [
         "AML",
         "犯罪収益移転防止法",
         "本人確認"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "ユニバーサルサービス": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "基礎的電気通信役務",
+        "ユニバーサルサービス交付金"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -255,6 +405,15 @@
         "ローン審査が通らない場合の白紙解除",
         "融資不成立で契約解除"
       ]
+    },
+    "一般廃棄物": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "家庭ごみ",
+        "事業系一般廃棄物"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "一般用医薬品": {
       "category": "薬機法",
@@ -357,6 +516,50 @@
         "誤って二重に振り込んだお金の返還請求",
         "原因なく得た利益"
       ]
+    },
+    "不正アクセス助長行為": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "フィッシング行為",
+        "識別符号の不正取得"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "不正アクセス禁止法": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "不正アクセス行為の禁止等に関する法律"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "不正アクセス禁止法違反": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "不正アクセス罪",
+        "刑事罰"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "不正アクセス行為": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "なりすまし",
+        "セキュリティ・ホール攻撃"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "不法投棄": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "不適正処理",
+        "原状回復措置命令"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "不法行為": {
       "category": "民法-債権",
@@ -1065,6 +1268,21 @@
         "刑事裁判の法廷手続"
       ]
     },
+    "公害": {
+      "category": "環境基本法",
+      "synonyms": [
+        "典型7公害",
+        "大気汚染",
+        "水質汚濁",
+        "土壌汚染",
+        "騒音",
+        "振動",
+        "悪臭",
+        "地盤沈下"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "公序良俗": {
       "category": "民法-法律行為",
       "synonyms": [
@@ -1219,11 +1437,29 @@
         "公判の冒頭手続"
       ]
     },
+    "処分業": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "中間処理業",
+        "最終処分業"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "処方箋": {
       "category": "薬剤師法",
       "synonyms": [
         "処方せん",
         "院外処方"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "出入国管理及び難民認定法": {
+      "category": "入管法",
+      "synonyms": [
+        "入管法",
+        "在留資格"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -1238,6 +1474,15 @@
         "子会社への出向",
         "他社への出向命令"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "出席停止": {
+      "category": "学校保健安全法",
+      "synonyms": [
+        "感染症による出席停止",
+        "学校感染症"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "出張": {
@@ -1381,6 +1626,16 @@
       "scenarios": [
         "裁判所の終局的判断"
       ]
+    },
+    "利用者保護": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "説明義務",
+        "書面交付義務",
+        "初期契約解除"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "制限行為能力者": {
       "category": "民法-行為能力",
@@ -1706,6 +1961,16 @@
         "訴訟要件を欠くため門前払い"
       ]
     },
+    "原料原産地表示": {
+      "category": "食品表示法",
+      "synonyms": [
+        "国別重量順表示",
+        "国産",
+        "輸入"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "原状回復": {
       "category": "賃貸借",
       "synonyms": [
@@ -1727,6 +1992,14 @@
         "反社会的勢力ではない表明保証",
         "反社判明時の解除"
       ]
+    },
+    "収集運搬業": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "産業廃棄物収集運搬業許可"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "取得時効": {
       "category": "民法-物権",
@@ -1952,6 +2225,15 @@
         "退職時の営業秘密漏洩"
       ]
     },
+    "営業許可": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "飲食店営業許可",
+        "営業の届出"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "四半期報告書": {
       "category": "金商法",
       "synonyms": [
@@ -2020,6 +2302,15 @@
         "土地の価格がいくら以下なら固定資産税はかからない",
         "固定資産税の免税点はいくら"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "国の責務": {
+      "category": "サイバーセキュリティ基本法",
+      "synonyms": [
+        "施策の策定",
+        "実施"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "国内優先権": {
@@ -2098,11 +2389,30 @@
         "汚染が発覚した土地"
       ]
     },
+    "土壌汚染対策法": {
+      "category": "土壌汚染対策法",
+      "synonyms": [
+        "土壌汚染状況調査",
+        "形質変更時要届出区域"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "在宅医療": {
       "category": "医療法",
       "synonyms": [
         "訪問診療",
         "訪問看護"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "在留資格": {
+      "category": "入管法",
+      "synonyms": [
+        "就労ビザ",
+        "永住権",
+        "特定技能"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -2221,6 +2531,15 @@
         "実用新案登録出願を特許出願に変更"
       ]
     },
+    "大気汚染防止法": {
+      "category": "大気汚染防止法",
+      "synonyms": [
+        "排出基準",
+        "総量規制基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "大量保有報告書": {
       "category": "金商法",
       "synonyms": [
@@ -2325,6 +2644,41 @@
       "scenarios": [
         "婚姻中に妻が出産した子の父の推定"
       ]
+    },
+    "学校保健安全法": {
+      "category": "学校保健安全法",
+      "synonyms": [
+        "学校保健計画",
+        "学校安全計画"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "学校教育法": {
+      "category": "学校教育法",
+      "synonyms": [
+        "学校教育法施行令",
+        "学校教育法施行規則"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "学校給食法": {
+      "category": "学校給食法",
+      "synonyms": [
+        "学校給食実施基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "学校設置基準": {
+      "category": "学校教育法",
+      "synonyms": [
+        "大学設置基準",
+        "高等学校設置基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "宅地建物取引業": {
       "category": "宅建業法",
@@ -2643,6 +2997,15 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "廃棄物処理法": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "廃棄物の処理及び清掃に関する法律",
+        "廃掃法"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "延滞金": {
       "category": "税法-地方税",
       "synonyms": [
@@ -2687,6 +3050,26 @@
         "中古住宅の状況調査",
         "売買前のインスペクション"
       ]
+    },
+    "建築基準法": {
+      "category": "建築基準法",
+      "synonyms": [
+        "建築物の安全",
+        "単体規定",
+        "集団規定"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "建築確認": {
+      "category": "建築基準法",
+      "synonyms": [
+        "建築確認申請",
+        "確認済証",
+        "検査済証"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "弁理士": {
       "category": "特許手続",
@@ -3108,6 +3491,16 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "技能実習": {
+      "category": "技能実習法",
+      "synonyms": [
+        "外国人技能実習制度",
+        "監理団体",
+        "実習実施者"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "技術分野": {
       "category": "特許明細書",
       "synonyms": [
@@ -3192,6 +3585,24 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "排出事業者責任": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "排出者責任",
+        "委託基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "接続協定": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "接続料",
+        "相互接続"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "接道義務": {
       "category": "重要事項説明",
       "synonyms": [
@@ -3243,6 +3654,15 @@
       "scenarios": [
         "規程の改正は誰が決めるか"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "教育委員会": {
+      "category": "地方教育行政法",
+      "synonyms": [
+        "地方教育行政の組織及び運営に関する法律",
+        "教育長"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "教育訓練": {
@@ -3301,6 +3721,16 @@
         "相手方が持つ文書の提出を命じる"
       ]
     },
+    "斜線制限": {
+      "category": "建築基準法",
+      "synonyms": [
+        "道路斜線",
+        "隣地斜線",
+        "北側斜線"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "新株予約権": {
       "category": "会社法",
       "synonyms": [
@@ -3331,6 +3761,24 @@
         "確定判決の既判力",
         "後訴遮断効"
       ]
+    },
+    "既存不適格": {
+      "category": "建築基準法",
+      "synonyms": [
+        "既存不適格建築物",
+        "違反建築物"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "日影規制": {
+      "category": "建築基準法",
+      "synonyms": [
+        "日影時間",
+        "敷地境界線"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "早期審査": {
       "category": "特許審査",
@@ -3423,6 +3871,16 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "最終処分場": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "安定型",
+        "管理型",
+        "遮断型"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "有価証券": {
       "category": "金商法",
       "synonyms": [
@@ -3474,6 +3932,15 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "期限表示": {
+      "category": "食品表示法",
+      "synonyms": [
+        "消費期限",
+        "賞味期限"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "本人同意": {
       "category": "個人情報保護法",
       "synonyms": [
@@ -3484,6 +3951,28 @@
         "第三者提供前の本人同意",
         "オプトイン形式の同意取得"
       ]
+    },
+    "栄養成分表示": {
+      "category": "食品表示法",
+      "synonyms": [
+        "熱量",
+        "たんぱく質",
+        "脂質",
+        "炭水化物",
+        "ナトリウム"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "校長": {
+      "category": "学校教育法",
+      "synonyms": [
+        "教頭",
+        "副校長",
+        "学校の管理"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "株主代表訴訟": {
       "category": "会社法",
@@ -3541,6 +4030,14 @@
         "検収期間の経過"
       ]
     },
+    "検閲の禁止": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "検閲禁止"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "業務上の秘密保持": {
       "category": "規程一般",
       "synonyms": [
@@ -3585,11 +4082,29 @@
         "業務をどう進めるか"
       ]
     },
+    "構造計算適合性判定": {
+      "category": "建築基準法",
+      "synonyms": [
+        "適判",
+        "適合性判定"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "標準報酬月額": {
       "category": "健康保険法",
       "synonyms": [
         "標準報酬",
         "保険料算定基礎"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "機能性表示食品": {
+      "category": "食品表示法",
+      "synonyms": [
+        "特定保健用食品",
+        "栄養機能食品"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -3661,6 +4176,16 @@
         "事業を続けながら借金を整理",
         "民事再生申立"
       ]
+    },
+    "水質汚濁防止法": {
+      "category": "水質汚濁防止法",
+      "synonyms": [
+        "特定事業場",
+        "排水基準",
+        "汚濁負荷量"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "求刑": {
       "category": "刑事訴訟",
@@ -3998,6 +4523,26 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "特別用途食品": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "医療用食品",
+        "病者用食品",
+        "妊産婦用食品"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "特別管理産業廃棄物": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "特管産廃",
+        "感染性廃棄物",
+        "PCB廃棄物"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "特定保健指導": {
       "category": "高齢者医療確保法",
       "synonyms": [
@@ -4015,6 +4560,25 @@
       "scenarios": [],
       "enrich_mode": "literal_only"
     },
+    "特定危険部位": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "BSE対策",
+        "SRM除去"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "特定技能": {
+      "category": "入管法",
+      "synonyms": [
+        "特定技能1号",
+        "特定技能2号",
+        "外国人材"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "特定投資家": {
       "category": "金商法",
       "synonyms": [
@@ -4028,6 +4592,25 @@
       "category": "医療法",
       "synonyms": [
         "特定機能病院の承認"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "特定電子メール法": {
+      "category": "特定電子メール法",
+      "synonyms": [
+        "迷惑メール防止法",
+        "オプトイン方式"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "特定電気通信役務提供者": {
+      "category": "プロバイダ責任制限法",
+      "synonyms": [
+        "プロバイダ",
+        "サイトの管理者",
+        "SNS事業者"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -4121,6 +4704,36 @@
         "土壌汚染が発覚"
       ]
     },
+    "環境基本法": {
+      "category": "環境基本法",
+      "synonyms": [
+        "環境基本計画"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "環境基準": {
+      "category": "環境基本法",
+      "synonyms": [
+        "大気環境基準",
+        "水質環境基準",
+        "騒音環境基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "環境影響評価": {
+      "category": "環境影響評価法",
+      "synonyms": [
+        "環境アセスメント",
+        "配慮書",
+        "方法書",
+        "準備書",
+        "評価書"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "環境性能割": {
       "category": "税法-地方税",
       "synonyms": [
@@ -4165,6 +4778,15 @@
         "本発明は〇〇産業で利用できる",
         "産業上の利用分野"
       ]
+    },
+    "産業廃棄物": {
+      "category": "廃棄物処理法",
+      "synonyms": [
+        "20種類の産業廃棄物",
+        "排出事業者"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "用法遵守義務": {
       "category": "賃貸借",
@@ -4242,6 +4864,24 @@
       "synonyms": [
         "保険診療",
         "現物給付"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "発信者情報開示": {
+      "category": "プロバイダ責任制限法",
+      "synonyms": [
+        "発信者情報開示請求",
+        "開示命令"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "発信者情報開示命令": {
+      "category": "プロバイダ責任制限法",
+      "synonyms": [
+        "新型開示手続",
+        "非訟手続"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
@@ -4546,6 +5186,15 @@
         "私的バックアップ"
       ]
     },
+    "私立学校": {
+      "category": "私立学校法",
+      "synonyms": [
+        "私学",
+        "学校法人"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "私道負担": {
       "category": "重要事項説明",
       "synonyms": [
@@ -4724,6 +5373,16 @@
       "scenarios": [
         "生活保護開始決定を義務付ける"
       ]
+    },
+    "義務教育": {
+      "category": "学校教育法",
+      "synonyms": [
+        "小学校",
+        "中学校",
+        "義務教育学校"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
     },
     "翻案権": {
       "category": "著作権法",
@@ -5550,6 +6209,15 @@
         "識別力の判断"
       ]
     },
+    "識別符号": {
+      "category": "不正アクセス禁止法",
+      "synonyms": [
+        "ID・パスワード",
+        "認証情報"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "譲渡禁止": {
       "category": "契約一般",
       "synonyms": [
@@ -5703,6 +6371,15 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "輸入食品": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "輸入届出",
+        "検疫所"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "返還義務": {
       "category": "NDA",
       "synonyms": [
@@ -5748,6 +6425,24 @@
         "定年退職時の退職金",
         "中途退職の退職手当"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "送信防止措置": {
+      "category": "プロバイダ責任制限法",
+      "synonyms": [
+        "削除請求",
+        "投稿削除"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "通信の秘密": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "通信の秘密の保護",
+        "電気通信事業法4条"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "通勤手当": {
@@ -5858,6 +6553,15 @@
       ],
       "enrich_mode": "literal_only"
     },
+    "遺伝子組換え表示": {
+      "category": "食品表示法",
+      "synonyms": [
+        "GMO表示",
+        "分別生産流通管理"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "遺産分割": {
       "category": "民法-相続",
       "synonyms": [
@@ -5945,6 +6649,17 @@
         "別部署への異動命令",
         "転勤を伴う異動"
       ],
+      "enrich_mode": "literal_only"
+    },
+    "重要インフラ": {
+      "category": "サイバーセキュリティ基本法",
+      "synonyms": [
+        "重要インフラ事業者",
+        "情報通信",
+        "電力",
+        "金融"
+      ],
+      "scenarios": [],
       "enrich_mode": "literal_only"
     },
     "量刑": {
@@ -6044,6 +6759,16 @@
         "基礎意匠のバリエーション"
       ]
     },
+    "防火地域": {
+      "category": "建築基準法",
+      "synonyms": [
+        "準防火地域",
+        "防火構造",
+        "耐火構造"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "限定承認": {
       "category": "民法-相続",
       "synonyms": [
@@ -6108,6 +6833,49 @@
         "離婚すると相手の家族との関係はどうなるか"
       ]
     },
+    "難民認定": {
+      "category": "入管法",
+      "synonyms": [
+        "難民申請",
+        "難民認定手続"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "電気通信主任技術者": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "主任技術者の選任"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "電気通信事業者": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "電気通信事業の登録",
+        "電気通信事業の届出"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "電気通信役務": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "電気通信サービス",
+        "通信役務"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "電気通信番号": {
+      "category": "電気通信事業法",
+      "synonyms": [
+        "電気通信番号計画"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
     "面会交流": {
       "category": "家事",
       "synonyms": [
@@ -6142,6 +6910,87 @@
       "synonyms": [
         "相場操縦",
         "市場操作"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食中毒": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "食中毒の届出",
+        "食中毒事件票"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品の規格基準": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "成分規格",
+        "製造基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品添加物": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "指定添加物",
+        "既存添加物",
+        "使用基準"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品衛生法": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "食品の安全",
+        "飲食に起因する衛生上の危害発生防止"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品衛生監視員": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "食品衛生検査",
+        "立入検査"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品衛生管理者": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "乳製品",
+        "食肉製品",
+        "食用油脂"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品衛生責任者": {
+      "category": "食品衛生法",
+      "synonyms": [
+        "食品衛生責任者の設置"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品表示基準": {
+      "category": "食品表示法",
+      "synonyms": [
+        "加工食品の表示",
+        "生鮮食品の表示"
+      ],
+      "scenarios": [],
+      "enrich_mode": "literal_only"
+    },
+    "食品表示法": {
+      "category": "食品表示法",
+      "synonyms": [
+        "食品表示基準"
       ],
       "scenarios": [],
       "enrich_mode": "literal_only"
