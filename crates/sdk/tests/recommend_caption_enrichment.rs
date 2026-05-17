@@ -87,8 +87,11 @@ async fn recommends_on_for_paraphrase_heavy_query_vs_caption() {
 }
 
 #[tokio::test]
-async fn recommends_off_for_literal_lookup_query_matching_caption() {
-    // workplace-regs 風: caption に query キーワードが直接含まれる
+async fn recommends_uncertain_for_workplace_regs_style_match() {
+    // workplace-regs 風: caption に query キーワードが直接含まれる構造。
+    // v5 では Off 域 (q-cap ≥ 0.25) だったが、v6 (Run 12u) で再校正された
+    // 結果この程度 (q-cap ~0.30) は Uncertain band に再分類された
+    // (実測では mild win に振れる傾向)。
     let e = build().await;
     let nb = e.notebook_id();
     let cs = vec![
@@ -116,8 +119,49 @@ async fn recommends_off_for_literal_lookup_query_matching_caption() {
     ];
     let r = e.recommend_caption_enrichment(&qs).await.unwrap();
     assert!(
+        matches!(r, EnrichmentRecommendation::Uncertain { .. }),
+        "expected Uncertain for v6 mid-band, got {r:?}"
+    );
+    assert!(!r.enrichment_on());
+    assert!(
+        r.caption_rerank(),
+        "Uncertain → cap rerank true (default) のまま"
+    );
+}
+
+#[tokio::test]
+async fn recommends_off_for_strong_literal_match_above_0_40() {
+    // v6 (Run 12u) で `Off` を出すには q-cap ≥ 0.40 が必要。caption と
+    // query をほぼ同じ文に揃えて literal match を稼ぐ。
+    let e = build().await;
+    let nb = e.notebook_id();
+    let cs = vec![
+        chunk_with_caption(
+            "事業所税の納税義務者",
+            "事業所税の納税義務者は事業所等を有する者である。",
+        ),
+        chunk_with_caption(
+            "入湯税は誰が納める",
+            "入湯税は鉱泉浴場の入湯客が納める税である。",
+        ),
+        chunk_with_caption(
+            "延滞金の利率",
+            "延滞金の利率は地方税法で定める年利率を適用する。",
+        ),
+    ];
+    let texts: Vec<String> = cs.iter().map(|c| c.text.clone()).collect();
+    let embs = e.embedder().embed(&texts).await.unwrap();
+    e.store().upsert(nb, &cs, &embs).await.unwrap();
+
+    let qs = vec![
+        "事業所税の納税義務者は誰",
+        "入湯税は誰が納めるのか",
+        "延滞金の利率はいくら",
+    ];
+    let r = e.recommend_caption_enrichment(&qs).await.unwrap();
+    assert!(
         matches!(r, EnrichmentRecommendation::Off { .. }),
-        "expected Off for literal-lookup queries matching captions, got {r:?}"
+        "expected Off for strong literal match (q-cap ≥ 0.40), got {r:?}"
     );
     assert!(!r.enrichment_on());
     assert!(r.caption_rerank(), "Off → cap rerank true (default) のまま");

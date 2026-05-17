@@ -909,38 +909,43 @@ type CaptionListCache = std::sync::Mutex<Option<Arc<Vec<(Uuid, String)>>>>;
 
 /// [`Ellisii::recommend_caption_enrichment`] が返す推奨。
 ///
-/// Run 12k-12n の cross-corpus A/B から導かれた provisional しきい値
-/// (q-cap match=0.20 中央境界) を使う。詳細は
-/// `docs/eval/recall-evals.md` Run 12m / 12n 参照。
+/// Run 12u で thesaurus v6 (LiteralOnly mode 導入) 用に再校正した閾値を使う:
+///
+/// - `< 0.30` → [`Self::On`] (退行リスクほぼ無し、ほぼ全 corpus で win or neutral)
+/// - `>= 0.40` → [`Self::Off`] (退行残存リスク、yokohama 0.422 等が境界)
+/// - 中間帯 → [`Self::Uncertain`]
+///
+/// v5 (Run 12n) では `< 0.15` / `>= 0.25` を使っていたが、v6 で規程・税法系
+/// 104 entries を `LiteralOnly` に再分類した結果、q-cap 0.25-0.42 帯の
+/// fixture (jp-workplace-regs / yokohama 等) は **退行 → mild win** に
+/// 転換した。したがって OFF 域は v5 より大きく狭まる。詳細は
+/// `docs/eval/recall-evals.md` Run 12m / 12n / 12t / 12u 参照。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EnrichmentRecommendation {
     /// 推奨: `with_caption_enrichment_default()` ON
     /// **かつ** `SearchOptions::caption_rerank = false`。
-    /// query↔caption の literal gap が大きく、scenario 拡張が paraphrase
-    /// gap を橋渡しすることが期待できる。
+    /// query↔caption の literal gap が大きい (または小さくても v6 LiteralOnly
+    /// mode で dilute がほぼ無視できる程度) で、enrichment は net win または
+    /// neutral が期待できる。
     On {
-        /// 観測された q-cap match (~0.0-0.15)
+        /// 観測された q-cap match (~0.0-0.30)
         q_cap_match: f32,
     },
-    /// 推奨: enrichment を **ON にする確信は無い** — ON にした場合、4 fixture
-    /// 中 3 件で実測 net 退行 (workplace-regs / tokkyo-hou / yokohama, Run 12k/n)。
+    /// 推奨: enrichment OFF。v6 校正 (Run 12u) 後でも残る退行域。
+    /// 現在の calibration では jp-tokkyo-hou (q-cap=0.307) が唯一の
+    /// 退行 fixture で、それを超える q-cap 0.40 以上の corpus は実測
+    /// が薄いので保守的に OFF 推奨にしている。
     ///
-    /// **ただし**「Off ⇒ 必ず退行」 ではない。jp-civil-law (q-cap=0.307) は
-    /// 同じく Off 域にあるが Run 12p で実測 1 件 rescue (退行 0) と
-    /// mild win に振れた。caption が article-title 風で短い corpus では
-    /// scenario suffix への耐性が高い様子。
-    ///
-    /// `Off` は「OFF を強制すべき」 ではなく「ON 推奨できない (退行 75%)」
-    /// と読むべき。確実性を求めるなら自前 fixture で `eval_enrichment_ab`
-    /// を 1 度回して net 効果を直接確認するのが安全。
+    /// 確実性を求めるなら自前 fixture で `eval_enrichment_ab` を 1 度
+    /// 回して net 効果を直接確認するのが安全。
     Off {
-        /// 観測された q-cap match (~0.25-)
+        /// 観測された q-cap match (~0.40-)
         q_cap_match: f32,
     },
-    /// 中間帯 (0.15 ≦ q-cap match < 0.25)。自前 A/B (`eval_enrichment_ab`)
-    /// で実測してから判断するのが安全。
+    /// 中間帯 (0.30 ≦ q-cap match < 0.40)。v6 では実測 mild win / 退行が
+    /// 拮抗する帯域。自前 A/B (`eval_enrichment_ab`) で確認するのが安全。
     Uncertain {
-        /// 観測された q-cap match (~0.15-0.25)
+        /// 観測された q-cap match (~0.30-0.40)
         q_cap_match: f32,
     },
 }
@@ -1915,14 +1920,23 @@ impl Ellisii {
     /// `with_caption_enrichment_default()` を ON にすべきか、サンプルクエリ
     /// 群から自動推奨する。
     ///
-    /// Run 12k-12p の cross-corpus A/B (12 valid fixture) で校正された
-    /// **q-cap match (query↔caption literal match)** 信号を使う:
+    /// Run 12u で thesaurus v6 (LiteralOnly mode 導入後) に対して再校正
+    /// した **q-cap match (query↔caption literal match)** 信号を使う:
     ///
-    /// - `< 0.15` → [`EnrichmentRecommendation::On`] (paraphrase gap が大きい)
-    ///   — 8/8 fixture で退行ゼロの強い保証
-    /// - `>= 0.25` → [`EnrichmentRecommendation::Off`] (ON 推奨できない)
-    ///   — 4 fixture 中 3 件で実測退行、1 件 (jp-civil-law) は反例的に mild win
-    /// - 中間帯 → [`EnrichmentRecommendation::Uncertain`] (自前 A/B 推奨)
+    /// - `< 0.30` → [`EnrichmentRecommendation::On`]
+    ///   — 13 fixture 中ほぼすべてで mild win or neutral、退行リスク低
+    /// - `>= 0.40` → [`EnrichmentRecommendation::Off`]
+    ///   — 退行残存帯。実測薄なので保守的に OFF 推奨
+    /// - 中間帯 (0.30-0.40) → [`EnrichmentRecommendation::Uncertain`]
+    ///   — v6 では jp-tokkyo-hou (0.307) のみ唯一の退行例、他 (jp-civil-law
+    ///   0.307 / jp-workplace-regs 0.273) は mild win。境界は薄いので自前
+    ///   A/B 推奨
+    ///
+    /// v5 (Run 12n) では `< 0.15` / `>= 0.25` を使っていたが、v6 で規程・
+    /// 税法系 104 entries を `LiteralOnly` に再分類した結果、q-cap 0.25-
+    /// 0.42 帯の fixture (jp-workplace-regs / yokohama 等) は **退行 →
+    /// mild win** に転換した。したがって ON 域は v5 より大幅に拡大し、
+    /// OFF 域は狭まる。
     ///
     /// 推奨される [`SearchOptions::caption_rerank`] とのペアリングは
     /// [`EnrichmentRecommendation::caption_rerank`] / [`Self::enrichment_on`]
@@ -1935,13 +1949,13 @@ impl Ellisii {
     /// 実装: `all_captions` の上限 256 件をサンプルし、
     /// `ellisii_rag::query_title_match_mean(queries, captions)` を計算。
     ///
-    /// 経緯と閾値の根拠は `docs/eval/recall-evals.md` Run 12m / 12n 参照。
+    /// 経緯と閾値の根拠は `docs/eval/recall-evals.md` Run 12m / 12n / 12t / 12u 参照。
     pub async fn recommend_caption_enrichment<S: AsRef<str>>(
         &self,
         sample_queries: &[S],
     ) -> Result<EnrichmentRecommendation> {
-        const ON_THRESHOLD: f32 = 0.15;
-        const OFF_THRESHOLD: f32 = 0.25;
+        const ON_THRESHOLD: f32 = 0.30;
+        const OFF_THRESHOLD: f32 = 0.40;
         if sample_queries.is_empty() {
             return Ok(EnrichmentRecommendation::Uncertain { q_cap_match: 0.0 });
         }

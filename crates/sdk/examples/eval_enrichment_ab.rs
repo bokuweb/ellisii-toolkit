@@ -35,6 +35,11 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize, Clone)]
 struct CorpusEntry {
     doc_id: String,
+    /// 親 doc id。golden の `relevant` が parent 粒度で書かれている fixture
+    /// (例: jp-manual) では `parent_id.unwrap_or(doc_id)` を id_map の値に
+    /// 使うことで parent-level relevance を素直に評価できる。
+    #[serde(default)]
+    parent_id: Option<String>,
     #[serde(default)]
     caption: String,
     text: String,
@@ -81,13 +86,37 @@ async fn run() -> anyhow::Result<()> {
         gold.items.len()
     );
 
+    // golden の relevant が doc_id 粒度か parent_id 粒度か auto-detect
+    // (eval_fixtures.rs と同じロジック)。誤検出回避のため doc_id 優先。
+    let use_parent_id = {
+        use std::collections::HashSet;
+        let doc_ids: HashSet<&str> = corpus.iter().map(|e| e.doc_id.as_str()).collect();
+        let parent_ids: HashSet<&str> = corpus
+            .iter()
+            .filter_map(|e| e.parent_id.as_deref())
+            .collect();
+        let golden_relevant: HashSet<&str> = gold
+            .items
+            .iter()
+            .flat_map(|i| i.relevant.iter().map(|s| s.as_str()))
+            .collect();
+        !golden_relevant.is_empty()
+            && !golden_relevant.iter().all(|r| doc_ids.contains(r))
+            && golden_relevant.iter().all(|r| parent_ids.contains(r))
+    };
+
     let nb = Uuid::new_v4();
     let src = Uuid::new_v4();
     let mut chunks_base: Vec<Chunk> = Vec::with_capacity(corpus.len());
     let mut id_map: HashMap<Uuid, String> = HashMap::new();
     for (i, e) in corpus.iter().enumerate() {
         let cid = Uuid::new_v4();
-        id_map.insert(cid, e.doc_id.clone());
+        let rel_id = if use_parent_id {
+            e.parent_id.clone().unwrap_or_else(|| e.doc_id.clone())
+        } else {
+            e.doc_id.clone()
+        };
+        id_map.insert(cid, rel_id);
         let txt = if e.caption.is_empty() {
             e.text.clone()
         } else {
