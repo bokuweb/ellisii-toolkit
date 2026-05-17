@@ -1,0 +1,96 @@
+{
+  "name": "jp-food-law-sparse-v1",
+  "_note": "Run 12bb: jp-food-law の sparse 版 (body から v8 synonym を — に置換)。v8 enrichment の synonym bridge 効果を直接抽出。",
+  "items": [
+    {
+      "query": "飲食に起因する衛生上の危害発生防止の規制",
+      "relevant": [
+        "food-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "危害分析重要管理点に沿った衛生管理",
+      "relevant": [
+        "food-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "食中毒事件票の作成と報告",
+      "relevant": [
+        "food-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "指定添加物と既存添加物の使用基準",
+      "relevant": [
+        "food-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "食品衛生検査と立入検査の権限",
+      "relevant": [
+        "food-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "食品表示基準の府令",
+      "relevant": [
+        "food-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "特定原材料の表示義務対象",
+      "relevant": [
+        "food-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "熱量とたんぱく質の義務表示",
+      "relevant": [
+        "food-8"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "消費期限と賞味期限の使い分け",
+      "relevant": [
+        "food-9"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "特定保健用食品と栄養機能食品の3つ目",
+      "relevant": [
+        "food-10"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    }
+  ]
+}

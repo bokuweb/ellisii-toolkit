@@ -1,0 +1,303 @@
+{
+  "name": "jp-medical-law-sparse-v1",
+  "_note": "Run 12z: jp-medical-law と同 golden で、corpus body から v7 synonym 表現をストリップした sparse 版 (— に置換)。baseline は caption 直接 hit にしか頼れない。v7 enrichment (caption に synonym append) が hit を救済できるかを直接測る。",
+  "items": [
+    {
+      "query": "医療法人を設立するための要件",
+      "relevant": [
+        "iryouhou-1"
+      ],
+      "tags": [
+        "literal"
+      ]
+    },
+    {
+      "query": "社団医療法人と財団医療法人の違い",
+      "relevant": [
+        "iryouhou-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "病院の定義と開設許可",
+      "relevant": [
+        "iryouhou-2"
+      ],
+      "tags": [
+        "literal"
+      ]
+    },
+    {
+      "query": "有床診療所と無床診療所",
+      "relevant": [
+        "iryouhou-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "特定機能病院の承認要件",
+      "relevant": [
+        "iryouhou-4"
+      ],
+      "tags": [
+        "literal"
+      ]
+    },
+    {
+      "query": "地域医療支援病院とはどんな病院",
+      "relevant": [
+        "iryouhou-5"
+      ],
+      "tags": [
+        "literal"
+      ]
+    },
+    {
+      "query": "医師の説明義務と患者の同意",
+      "relevant": [
+        "iryouhou-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "説明と同意とは何ですか",
+      "relevant": [
+        "iryouhou-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "手術前に治療方針について納得して受けると決める仕組み",
+      "relevant": [
+        "iryouhou-6"
+      ],
+      "tags": [
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "医療事故調査制度の概要",
+      "relevant": [
+        "iryouhou-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "医師法19条の応召義務",
+      "relevant": [
+        "ishihou-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "診療拒否はどんなときに許されるか",
+      "relevant": [
+        "ishihou-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "医師の守秘義務の根拠",
+      "relevant": [
+        "ishihou-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "医師国家試験に合格すると",
+      "relevant": [
+        "ishihou-3"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "准看護師の業務範囲",
+      "relevant": [
+        "kangoshi-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "薬剤師国家試験の受験資格",
+      "relevant": [
+        "yakuzaishi-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "訪問診療と訪問看護を含む医療",
+      "relevant": [
+        "iryouhou-8"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "地域包括ケアの推進",
+      "relevant": [
+        "kaigohoken-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "メタボ健診の対象年齢",
+      "relevant": [
+        "tokuteikenshin-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "特定健診と特定保健指導の関係",
+      "relevant": [
+        "tokuteikenshin-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "医療用医薬品の定義",
+      "relevant": [
+        "yakki-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "高度管理医療機器の分類",
+      "relevant": [
+        "yakki-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "新しい薬の承認申請に必要な資料",
+      "relevant": [
+        "yakki-3"
+      ],
+      "tags": [
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "GCPに基づく治験の実施",
+      "relevant": [
+        "yakki-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "市販後安全性情報としての副作用等報告",
+      "relevant": [
+        "yakki-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "クラスI回収とリコールの違い",
+      "relevant": [
+        "yakki-6"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "OTC医薬品の販売方法",
+      "relevant": [
+        "yakki-7"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "市販薬を薬局で買う場合の分類",
+      "relevant": [
+        "yakki-7"
+      ],
+      "tags": [
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "健保の被扶養者の認定",
+      "relevant": [
+        "kenpo-1"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "限度額適用認定証の使い方",
+      "relevant": [
+        "kenpo-2"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "業務外の傷病で会社を休んだときの手当",
+      "relevant": [
+        "kenpo-3"
+      ],
+      "tags": [
+        "paraphrase"
+      ]
+    },
+    {
+      "query": "直接支払制度で出産費用が立て替え不要に",
+      "relevant": [
+        "kenpo-4"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    },
+    {
+      "query": "診療報酬改定はいつ行われる",
+      "relevant": [
+        "kenpo-5"
+      ],
+      "tags": [
+        "synonym-bridge"
+      ]
+    }
+  ]
+}
