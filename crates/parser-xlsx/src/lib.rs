@@ -21,6 +21,43 @@ pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
     Ok(out)
 }
 
+/// シートごとに 1 entry、全文を string にまとめて返す。
+///
+/// 戻り値の Vec の順序は `Workbook::sheet_names()` の順 (= ファイルに並んでいる順)。
+/// `worksheet_range` が失敗したシートは空文字 entry を入れることで「i 番目 = シート i」の
+/// 対応を呼び出し側で保てるようにしてある — 抜けると下流の page index 付けが崩れる。
+///
+/// 1 シートのフォーマットは
+///   - 行は `\n` で結合
+///   - セルは " | " で結合
+///   - 完全に空の行は skip
+///
+/// で、`parse()` が出す `ParsedBlock.text` と同じ join 規約に揃えている。
+pub fn sheet_texts(path: &str) -> Result<Vec<String>> {
+    let mut wb = open_workbook_auto(path).map_err(|e| Error::Parse(format!("xlsx: {e}")))?;
+    let sheets: Vec<String> = wb.sheet_names().to_vec();
+    let mut out = Vec::with_capacity(sheets.len());
+    for sheet in &sheets {
+        let Ok(range) = wb.worksheet_range(sheet) else {
+            out.push(String::new());
+            continue;
+        };
+        let mut text = String::new();
+        for row in range.rows() {
+            let cells: Vec<String> = row.iter().map(cell_to_string).collect();
+            if cells.iter().all(|c| c.trim().is_empty()) {
+                continue;
+            }
+            if !text.is_empty() {
+                text.push('\n');
+            }
+            text.push_str(&cells.join(" | "));
+        }
+        out.push(text);
+    }
+    Ok(out)
+}
+
 pub fn rows_to_blocks(sheet: &str, rows: &[Vec<String>]) -> Vec<ParsedBlock> {
     if rows.is_empty() {
         return vec![];

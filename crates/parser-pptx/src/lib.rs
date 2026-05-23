@@ -59,6 +59,58 @@ pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
     Ok(out)
 }
 
+/// スライド (= page) ごとに 1 entry、全文を string にまとめて返す。
+///
+/// 戻り値の Vec の index は 0-origin の slide index に対応 (= `out[0]` が 1 枚目)。
+/// 1 slide の string は
+///   - 本文 (`<a:t>` の連結)
+///   - speaker notes (あれば本文の後に空行+`Notes:\n` 区切りで追記)
+///
+/// を `\n` で結合した形。notes が無い slide はそのまま本文だけ。
+/// 本文が空 (画像 only など) でも entry 自体は push し、ファイル内の slide 順序と
+/// Vec index がずれないようにしてある。
+pub fn slide_texts(path: &str) -> Result<Vec<String>> {
+    let f = std::fs::File::open(path).map_err(Error::Io)?;
+    let mut zip = zip::ZipArchive::new(f).map_err(|e| Error::Parse(format!("zip: {e}")))?;
+    let mut slide_files: Vec<String> = (0..zip.len())
+        .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
+        .filter(|n| n.starts_with("ppt/slides/slide") && n.ends_with(".xml"))
+        .collect();
+    slide_files.sort_by_key(|n| extract_slide_number(n).unwrap_or(u32::MAX));
+
+    let mut out = Vec::with_capacity(slide_files.len());
+    for name in &slide_files {
+        let slide_num_in_archive = extract_slide_number(name);
+        let mut xml = String::new();
+        zip.by_name(name)
+            .map_err(|e| Error::Parse(format!("pptx slide read: {e}")))?
+            .read_to_string(&mut xml)
+            .map_err(Error::Io)?;
+        let body = extract_a_t(&xml);
+
+        let notes = slide_num_in_archive.and_then(|num| {
+            let notes_name = format!("ppt/notesSlides/notesSlide{num}.xml");
+            let mut nf = zip.by_name(&notes_name).ok()?;
+            let mut nxml = String::new();
+            nf.read_to_string(&mut nxml).ok()?;
+            let n = extract_notes_body(&nxml);
+            if n.trim().is_empty() {
+                None
+            } else {
+                Some(n)
+            }
+        });
+
+        let combined = match notes {
+            Some(n) if body.trim().is_empty() => format!("Notes:\n{n}"),
+            Some(n) => format!("{body}\n\nNotes:\n{n}"),
+            None => body,
+        };
+        out.push(combined);
+    }
+    Ok(out)
+}
+
 /// `ppt/slides/slide12.xml` → `Some(12)`、形式が違えば `None`。
 fn extract_slide_number(name: &str) -> Option<u32> {
     let stem = name
