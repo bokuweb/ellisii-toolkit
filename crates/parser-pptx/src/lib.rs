@@ -88,15 +88,18 @@ pub fn slide_texts(path: &str) -> Result<Vec<String>> {
             .map_err(Error::Io)?;
         let body = extract_a_t(&xml);
 
-        let notes = slide_num_in_archive
-            .and_then(|num| {
-                let notes_name = format!("ppt/notesSlides/notesSlide{num}.xml");
-                let mut nf = zip.by_name(&notes_name).ok()?;
-                let mut nxml = String::new();
-                nf.read_to_string(&mut nxml).ok()?;
-                let n = extract_notes_body(&nxml);
-                if n.trim().is_empty() { None } else { Some(n) }
-            });
+        let notes = slide_num_in_archive.and_then(|num| {
+            let notes_name = format!("ppt/notesSlides/notesSlide{num}.xml");
+            let mut nf = zip.by_name(&notes_name).ok()?;
+            let mut nxml = String::new();
+            nf.read_to_string(&mut nxml).ok()?;
+            let n = extract_notes_body(&nxml);
+            if n.trim().is_empty() {
+                None
+            } else {
+                Some(n)
+            }
+        });
 
         let combined = match notes {
             Some(n) if body.trim().is_empty() => format!("Notes:\n{n}"),
