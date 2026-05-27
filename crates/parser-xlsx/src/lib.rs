@@ -1,6 +1,7 @@
-use calamine::{open_workbook_auto, Data, Reader};
+use calamine::{open_workbook_auto, open_workbook_auto_from_rs, Data, Reader};
 use ellisii_core::{Error, Result};
 use ellisii_parsers_core::ParsedBlock;
+use std::io::Cursor;
 
 const ROWS_PER_BLOCK: usize = 20;
 
@@ -33,8 +34,14 @@ pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
 ///   - 完全に空の行は skip
 ///
 /// で、`parse()` が出す `ParsedBlock.text` と同じ join 規約に揃えている。
-pub fn sheet_texts(path: &str) -> Result<Vec<String>> {
-    let mut wb = open_workbook_auto(path).map_err(|e| Error::Parse(format!("xlsx: {e}")))?;
+///
+/// bytes は xlsx ファイルの実体 (= zip container) をそのまま渡す。中で `Cursor` に
+/// 包んで calamine に食わせるため、呼び出し側は path 経由でなくメモリ上 (DB blob,
+/// HTTP body 等) のデータをそのまま投げ込める。
+pub fn sheet_texts(bytes: &[u8]) -> Result<Vec<String>> {
+    let cursor = Cursor::new(bytes);
+    let mut wb =
+        open_workbook_auto_from_rs(cursor).map_err(|e| Error::Parse(format!("xlsx: {e}")))?;
     let sheets: Vec<String> = wb.sheet_names().to_vec();
     let mut out = Vec::with_capacity(sheets.len());
     for sheet in &sheets {

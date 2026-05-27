@@ -69,9 +69,13 @@ pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
 /// を `\n` で結合した形。notes が無い slide はそのまま本文だけ。
 /// 本文が空 (画像 only など) でも entry 自体は push し、ファイル内の slide 順序と
 /// Vec index がずれないようにしてある。
-pub fn slide_texts(path: &str) -> Result<Vec<String>> {
-    let f = std::fs::File::open(path).map_err(Error::Io)?;
-    let mut zip = zip::ZipArchive::new(f).map_err(|e| Error::Parse(format!("zip: {e}")))?;
+///
+/// bytes は pptx ファイルの実体 (= zip container) をそのまま渡す。中で `Cursor` に
+/// 包んで zip crate に食わせるため、呼び出し側は path 経由でなくメモリ上 (DB blob,
+/// HTTP body 等) のデータをそのまま投げ込める。
+pub fn slide_texts(bytes: &[u8]) -> Result<Vec<String>> {
+    let cursor = std::io::Cursor::new(bytes);
+    let mut zip = zip::ZipArchive::new(cursor).map_err(|e| Error::Parse(format!("zip: {e}")))?;
     let mut slide_files: Vec<String> = (0..zip.len())
         .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
         .filter(|n| n.starts_with("ppt/slides/slide") && n.ends_with(".xml"))
