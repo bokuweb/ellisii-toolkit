@@ -16,7 +16,13 @@ tempfile = "3"
 # pdfium バイナリは初回 parse 時に自動ダウンロード (~10MB)。
 # `image_latest` を有効にすると `PdfBitmap::as_image()` が使えるようになり、
 # スキャン PDF を OCR にかけるためのページ画像書き出しに使う。
-pdfium-render = { version = "0.8", default-features = false, features = ["thread_safe", "bindings", "pdfium_latest", "image_latest"] }
+#
+# `bindings` feature は付けない。`bindings` を有効にすると build.rs が bindgen を
+# 実行し、ビルド機に libclang/LLVM を要求する。Windows のビルド環境 (LLVM 未導入) では
+# `failed to run custom build command for pdfium-render` で失敗するため意図的に外している。
+# pdfium-render は `pdfium_latest` (=pdfium_7543) の事前生成済みバインディングを
+# crate に同梱しており、`bindings` 無しでもそれが `include!` されるため挙動は変わらない。
+pdfium-render = { version = "0.8", default-features = false, features = ["thread_safe", "pdfium_latest", "image_latest"] }
 pdfium-auto = "0.3"
 # フォールバック: pdfium が利用不可のとき (ネット不通・ダウンロード失敗) は pdf-extract に落ちる
 pdf-extract = "0.9"
