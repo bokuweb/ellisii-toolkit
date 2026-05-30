@@ -131,10 +131,18 @@ jobs:
         working-directory: litert-lm
         run: |
           set -euo pipefail
+          # minizip's http_archive pulls zlib-1.3.1.tar.gz from zlib.net, which
+          # flakes badly (serves error pages -> checksum mismatch). Pre-seed the
+          # official tarball from GitHub into a --distdir so Bazel uses the local
+          # copy and never touches zlib.net. Bazel matches it by basename+sha256.
+          mkdir -p /tmp/distdir
+          curl -fL --retry 5 --retry-all-errors -o /tmp/distdir/zlib-1.3.1.tar.gz \
+            https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23  /tmp/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
           # http_archive fetches occasionally 502 from GitHub; retry the build
           # (Bazel resumes fetching, doesn't rebuild completed actions).
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
-          retry bazel build //litert_cshared:CLiteRTLM
+          retry bazel build //litert_cshared:CLiteRTLM --distdir=/tmp/distdir
           cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
           ls -la "/tmp/${{ matrix.asset }}"
 
@@ -158,9 +166,18 @@ jobs:
           # We don't need the NDK for a host build; unset the vars so the repo
           # rule becomes a no-op empty repository.
           unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME ANDROID_HOME ANDROID_SDK_ROOT
+          # minizip's http_archive pulls zlib-1.3.1.tar.gz from zlib.net, which
+          # flakes badly (serves error pages -> checksum mismatch, varies every
+          # retry). Pre-seed the official tarball from GitHub into a --distdir so
+          # Bazel uses the local copy and never touches zlib.net. Bazel matches
+          # it by basename + sha256.
+          mkdir -p /c/distdir
+          curl -fL --retry 5 --retry-all-errors -o /c/distdir/zlib-1.3.1.tar.gz \
+            https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23 */c/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           # Short output root to dodge MAX_PATH issues on Windows.
-          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows
+          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows --distdir=C:/distdir
           # cc_binary(linkshared) emits CLiteRTLM.dll plus an import library
           # (named CLiteRTLM.if.lib or CLiteRTLM.lib) under bazel-bin.
           #
