@@ -1,0 +1,23 @@
+[package]
+name = "ellisii-llm-litert"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+tracing.workspace = true
+ellisii-core.workspace = true
+ellisii-llm-core.workspace = true
+ellisii-llm-prompt.workspace = true
+tokio = { workspace = true }
+
+[features]
+default = []
+# LiteRT-LM (Google AI Edge) ネイティブバックエンドをリンクする。
+# 有効化には CLiteRTLM dylib の在処を `LITERT_LM_LIB_DIR` で渡す必要がある。
+litert = []
+
+[dev-dependencies]
+tokio = { workspace = true }
