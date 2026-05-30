@@ -16,8 +16,13 @@ tokio = { workspace = true }
 [features]
 default = []
 # LiteRT-LM (Google AI Edge) ネイティブバックエンドをリンクする。
-# 有効化には CLiteRTLM dylib の在処を `LITERT_LM_LIB_DIR` で渡す必要がある。
+# ライブラリ解決: `LITERT_LM_LIB_DIR` で在処を渡すか、`LITERT_LM_PREBUILT=1` で
+# ホスト platform 向け prebuilt を GitHub Release から自動 DL (SHA-256 検証付き)。
 litert = []
+
+[build-dependencies]
+# prebuilt の SHA-256 検証用。build.rs でのみ使う軽量依存。
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio = { workspace = true }
