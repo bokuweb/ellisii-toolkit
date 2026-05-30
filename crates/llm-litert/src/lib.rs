@@ -2,6 +2,9 @@
 //!
 //! `litert` feature 有効時のみ実体が組み込まれる。デフォルトでは空 (Err) を返す。
 //! Gemma 4 (E2B / E4B) を Google 公式ランタイムで動かす経路。
+//!
+//! ライブラリの渡し方は 2 通り (`build.rs` 参照): `LITERT_LM_LIB_DIR` で手動指定、
+//! または `LITERT_LM_PREBUILT=1` でホスト platform 向け prebuilt を自動 DL。
 
 use ellisii_llm_core::ModelFamily;
 
@@ -265,7 +268,8 @@ mod backend {
         pub fn load(_cfg: LiteRtConfig) -> Result<Self> {
             Err(Error::Llm(
                 "llm-litert not linked against CLiteRTLM; rebuild with `--features litert` and \
-                 LITERT_LM_LIB_DIR pointing at the dylib"
+                 either LITERT_LM_PREBUILT=1 (auto-download host prebuilt) or LITERT_LM_LIB_DIR \
+                 pointing at the dylib"
                     .into(),
             ))
         }
