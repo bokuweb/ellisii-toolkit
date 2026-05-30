@@ -125,6 +125,13 @@ jobs:
         if: matrix.method == 'bazel' && runner.os == 'Windows'
         shell: bash
         working-directory: litert-lm
+        env:
+          # Git-bash/MSYS rewrites the leading `//` of a Bazel label into a
+          # Windows path (`//litert_cshared:CLiteRTLM` -> `/litert_cshared:...`),
+          # which Bazel rejects ("package names may not start with '/'").
+          # Disable MSYS arg/path conversion so labels pass through verbatim.
+          MSYS2_ARG_CONV_EXCL: "*"
+          MSYS_NO_PATHCONV: "1"
         run: |
           set -euo pipefail
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
