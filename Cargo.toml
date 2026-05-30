@@ -23,6 +23,7 @@ members = [
     "crates/llm-stub",
     "crates/llm-prompt",
     "crates/llm-llamacpp",
+    "crates/llm-litert",
     "crates/rag",
     "crates/rag-answer-eval",
     "crates/rag-eval-cli",
@@ -85,6 +86,7 @@ ellisii-llm-core = { path = "crates/llm-core" }
 ellisii-llm-stub = { path = "crates/llm-stub" }
 ellisii-llm-prompt = { path = "crates/llm-prompt" }
 ellisii-llm-llamacpp = { path = "crates/llm-llamacpp" }
+ellisii-llm-litert = { path = "crates/llm-litert" }
 ellisii-rag = { path = "crates/rag" }
 ellisii-rag-answer-eval = { path = "crates/rag-answer-eval" }
 ellisii-jp-tokenizer-core = { path = "crates/jp-tokenizer-core" }
