@@ -5,7 +5,9 @@
 
 use ellisii_llm_core::ModelFamily;
 
-#[cfg(feature = "litert")]
+// 実体は `litert` feature 有効 *かつ* build.rs が dylib を見つけたとき (litert_linked) のみ。
+// feature だけ有効でライブラリが無い環境 (CI の --all-features 等) はスタブにフォールバック。
+#[cfg(litert_linked)]
 mod ffi;
 
 /// LiteRT-LM バックエンドの構成。
@@ -33,7 +35,7 @@ impl LiteRtConfig {
     }
 }
 
-#[cfg(feature = "litert")]
+#[cfg(litert_linked)]
 mod backend {
     use super::*;
     use async_trait::async_trait;
@@ -250,7 +252,7 @@ mod backend {
     }
 }
 
-#[cfg(not(feature = "litert"))]
+#[cfg(not(litert_linked))]
 mod backend {
     use super::*;
     use async_trait::async_trait;
@@ -262,7 +264,9 @@ mod backend {
     impl LiteRtBackend {
         pub fn load(_cfg: LiteRtConfig) -> Result<Self> {
             Err(Error::Llm(
-                "llm-litert built without `litert` feature; rebuild with --features litert".into(),
+                "llm-litert not linked against CLiteRTLM; rebuild with `--features litert` and \
+                 LITERT_LM_LIB_DIR pointing at the dylib"
+                    .into(),
             ))
         }
     }
