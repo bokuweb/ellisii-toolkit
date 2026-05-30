@@ -82,16 +82,26 @@ jobs:
         if: matrix.method == 'bazel'
         uses: bazelbuild/setup-bazelisk@v3
 
-      # cc_shared_library overlay: one self-contained shared lib that exports
-      # the engine.h C ABI. Lives in its own package so we don't touch
-      # upstream's c/BUILD load lines. `//c:engine` is public + alwayslink.
-      - name: Write cc_shared_library overlay
+      # Self-contained shared lib that exports the engine.h C ABI. Lives in its
+      # own package so we don't touch upstream's c/BUILD load lines.
+      # `//c:engine` is public + alwayslink.
+      #
+      # Two rules, one per platform leg:
+      #   * linux -> cc_shared_library (proven): the GNU linker pulls every
+      #     transitive static archive (incl. the Rust libs) into the .so.
+      #   * windows -> cc_binary(linkshared): cc_shared_library DROPS the Rust
+      #     static archives (tokenizers_*, llg_*, cxxbridge1 glue) from the MSVC
+      #     link line -> 83 unresolved externals. A linkshared cc_binary links
+      #     the FULL transitive static closure exactly like upstream's working
+      #     litert_lm_main binary, so those archives are present. The C ABI is
+      #     exported via __declspec(dllexport) (LITERT_LM_C_API_EXPORT).
+      - name: Write shared-lib overlay
         if: matrix.method == 'bazel'
         shell: bash
         run: |
           mkdir -p litert-lm/litert_cshared
           cat > litert-lm/litert_cshared/BUILD.bazel <<'EOF'
-          load("@rules_cc//cc:defs.bzl", "cc_shared_library")
+          load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_shared_library")
 
           cc_shared_library(
               name = "CLiteRTLM",
@@ -103,6 +113,13 @@ jobs:
                   ],
                   "//conditions:default": [],
               }),
+          )
+
+          cc_binary(
+              name = "CLiteRTLM.dll",
+              linkshared = True,
+              deps = ["//c:engine"],
+              visibility = ["//visibility:public"],
           )
           EOF
           echo "----- overlay BUILD.bazel -----"
@@ -143,10 +160,10 @@ jobs:
           unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME ANDROID_HOME ANDROID_SDK_ROOT
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           # Short output root to dodge MAX_PATH issues on Windows.
-          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM --config=windows
-          # cc_shared_library emits CLiteRTLM.dll plus an import library
+          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows
+          # cc_binary(linkshared) emits CLiteRTLM.dll plus an import library
           # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin).
-          dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM 2>/dev/null | grep -i '\.dll$' | head -n1)"
+          dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM.dll 2>/dev/null | grep -i '\.dll$' | head -n1)"
           cp "$dll" "/tmp/${{ matrix.asset }}"
           implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
           cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
