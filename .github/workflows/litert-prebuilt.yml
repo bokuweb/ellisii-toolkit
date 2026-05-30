@@ -162,14 +162,31 @@ jobs:
           # Short output root to dodge MAX_PATH issues on Windows.
           retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows
           # cc_binary(linkshared) emits CLiteRTLM.dll plus an import library
-          # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin). cquery
-          # --output=files doesn't reliably list the linkshared outputs, so copy
-          # straight from the known bazel-bin path (fall back to a find).
-          dll="bazel-bin/litert_cshared/CLiteRTLM.dll"
-          test -f "$dll" || dll="$(find bazel-bin -iname 'CLiteRTLM*.dll' | head -n1)"
+          # (named CLiteRTLM.if.lib or CLiteRTLM.lib) under bazel-bin.
+          #
+          # IMPORTANT: the `bazel-bin` convenience symlink in the repo dir is a
+          # Windows *junction*, which Git-bash's `test -f` / `find` cannot
+          # traverse -> they silently resolve empty and `cp` gets ''. So resolve
+          # the REAL output dir via `bazel info bazel-bin` (a normal directory
+          # under C:/b), which find/test can walk. Must pass the same
+          # --config=windows so `info` reports the matching configuration's bin.
+          set -x
+          binroot="$(bazel --output_user_root=C:/b info --config=windows bazel-bin)"
+          echo "binroot=$binroot"
+          ls -la "$binroot/litert_cshared/" || true
+          dll="$binroot/litert_cshared/CLiteRTLM.dll"
+          if [ ! -f "$dll" ]; then
+            dll="$(find "$binroot" -iname 'CLiteRTLM*.dll' | head -n1)"
+          fi
+          echo "resolved dll=$dll"
           test -n "$dll" && test -f "$dll"
           cp "$dll" "/tmp/${{ matrix.asset }}"
-          implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
+          implib="$binroot/litert_cshared/CLiteRTLM.if.lib"
+          if [ ! -f "$implib" ]; then
+            implib="$(find "$binroot" -iname 'CLiteRTLM*.lib' | head -n1)"
+          fi
+          echo "resolved implib=$implib"
+          test -n "$implib" && test -f "$implib"
           cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
           ls -la "/tmp/${{ matrix.asset }}" "/tmp/CLiteRTLM-windows-x86_64.lib"
 
