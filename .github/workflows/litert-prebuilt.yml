@@ -50,17 +50,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # linux/windows: build the C shared lib from source via Bazel.
           - name: linux-x86_64
             os: ubuntu-latest
+            method: bazel
             asset: libCLiteRTLM-linux-x86_64.so
           - name: windows-x86_64
             os: windows-latest
+            method: bazel
             asset: CLiteRTLM-windows-x86_64.dll
+          # macOS: Google already ships a universal (arm64+x86_64) dylib inside
+          # the official xcframework, and building a shared lib from source hits
+          # an upstream cxx/libc++ template error under our config. So just
+          # repackage the official dylib — guaranteed correct, no Bazel.
           - name: macos-universal
             os: macos-14
+            method: xcframework
             asset: CLiteRTLM-macos-universal.dylib
     steps:
       - name: Checkout LiteRT-LM
+        if: matrix.method == 'bazel'
         uses: actions/checkout@v4
         with:
           repository: google-ai-edge/LiteRT-LM
@@ -70,12 +79,14 @@ jobs:
           path: litert-lm
 
       - name: Setup Bazelisk
+        if: matrix.method == 'bazel'
         uses: bazelbuild/setup-bazelisk@v3
 
       # cc_shared_library overlay: one self-contained shared lib that exports
       # the engine.h C ABI. Lives in its own package so we don't touch
       # upstream's c/BUILD load lines. `//c:engine` is public + alwayslink.
       - name: Write cc_shared_library overlay
+        if: matrix.method == 'bazel'
         shell: bash
         run: |
           mkdir -p litert-lm/litert_cshared
@@ -87,9 +98,6 @@ jobs:
               roots = ["//c:engine"],
               visibility = ["//visibility:public"],
               user_link_flags = select({
-                  "@platforms//os:macos": [
-                      "-Wl,-install_name,@rpath/CLiteRTLM_mac.dylib",
-                  ],
                   "@platforms//os:linux": [
                       "-Wl,-soname,libCLiteRTLM.so",
                   ],
@@ -100,34 +108,28 @@ jobs:
           echo "----- overlay BUILD.bazel -----"
           cat litert-lm/litert_cshared/BUILD.bazel
 
-      - name: Build (linux/macos)
-        if: runner.os != 'Windows'
+      - name: Build (linux)
+        if: matrix.method == 'bazel' && runner.os == 'Linux'
         shell: bash
         working-directory: litert-lm
         run: |
           set -euo pipefail
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            # Build both slices and lipo into a universal dylib.
-            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_arm64
-            cp "$(bazel cquery --cpu=darwin_arm64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_arm64.dylib
-            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_x86_64
-            cp "$(bazel cquery --cpu=darwin_x86_64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_x86_64.dylib
-            lipo -create -output "/tmp/${{ matrix.asset }}" /tmp/CLiteRTLM_arm64.dylib /tmp/CLiteRTLM_x86_64.dylib
-            install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "/tmp/${{ matrix.asset }}" || true
-          else
-            bazel build //litert_cshared:CLiteRTLM
-            cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
-          fi
+          # http_archive fetches occasionally 502 from GitHub; retry the build
+          # (Bazel resumes fetching, doesn't rebuild completed actions).
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
+          retry bazel build //litert_cshared:CLiteRTLM
+          cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
           ls -la "/tmp/${{ matrix.asset }}"
 
       - name: Build (windows)
-        if: runner.os == 'Windows'
+        if: matrix.method == 'bazel' && runner.os == 'Windows'
         shell: bash
         working-directory: litert-lm
         run: |
           set -euo pipefail
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           # Short output root to dodge MAX_PATH issues on Windows.
-          bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM --config=windows
+          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM --config=windows
           # cc_shared_library emits CLiteRTLM.dll plus an import library
           # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin).
           dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM 2>/dev/null | grep -i '\.dll$' | head -n1)"
@@ -135,6 +137,24 @@ jobs:
           implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
           cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
           ls -la "/tmp/${{ matrix.asset }}" "/tmp/CLiteRTLM-windows-x86_64.lib"
+
+      - name: Repackage official macOS xcframework
+        if: matrix.method == 'xcframework'
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/google-ai-edge/LiteRT-LM/releases/download/${LITERT_LM_REF}/CLiteRTLM_mac.xcframework.zip"
+          echo "downloading $url"
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/xcf.zip "$url"
+          unzip -q -o /tmp/xcf.zip -d /tmp/xcf
+          # Universal slice inside the xcframework; its install_name is already
+          # @rpath/CLiteRTLM_mac.dylib (what build.rs expects).
+          dylib="$(find /tmp/xcf -path '*macos-arm64_x86_64*/CLiteRTLM_mac.dylib' | head -n1)"
+          test -n "$dylib"
+          cp "$dylib" "/tmp/${{ matrix.asset }}"
+          install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "/tmp/${{ matrix.asset }}" || true
+          lipo -info "/tmp/${{ matrix.asset }}" || true
+          ls -la "/tmp/${{ matrix.asset }}"
 
       - name: Checksums
         shell: bash
