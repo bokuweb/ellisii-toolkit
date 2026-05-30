@@ -1,0 +1,190 @@
+# Builds the CLiteRTLM C shared library from google-ai-edge/LiteRT-LM source
+# for linux-x86_64 / windows-x86_64 / macos-universal and publishes them as
+# assets on a GitHub Release, so that `ellisii-llm-litert`'s build.rs can
+# auto-download a host prebuilt (LITERT_LM_PREBUILT=1) instead of every dev
+# building the native lib from source.
+#
+# Google only ships an official *macOS xcframework*; for every other platform
+# the upstream repo builds the `litert_lm_main` CLI, not a shared library. So
+# we add our own `cc_shared_library` overlay that wraps `//c:engine` (whose C
+# ABI functions are already annotated `LITERT_LM_C_API_EXPORT`) and link it as
+# one self-contained shared object per platform.
+#
+# Trigger manually (workflow_dispatch) or by pushing a `litert-prebuilt-v*`
+# tag. It never runs on normal pushes/PRs.
+#
+# NOTE: the per-platform Bazel build is heavy and unproven in CI; expect this
+# to need iteration (toolchain/config/LFS/disk). The asset names and the
+# install_name/SONAME/DLL names below MUST stay in sync with the resolution
+# table in crates/llm-litert/build.rs.
+
+name: litert-prebuilt
+
+on:
+  workflow_dispatch:
+    inputs:
+      litert_lm_ref:
+        description: "google-ai-edge/LiteRT-LM git ref (tag/commit) to build"
+        default: "v0.12.0"
+        required: true
+      release_tag:
+        description: "Release tag to publish the assets under"
+        default: "litert-prebuilt-v0.12.0"
+        required: true
+  push:
+    tags:
+      - "litert-prebuilt-v*"
+
+permissions:
+  contents: write
+
+env:
+  LITERT_LM_REF: ${{ github.event.inputs.litert_lm_ref || 'v0.12.0' }}
+  RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            asset: libCLiteRTLM-linux-x86_64.so
+          - name: windows-x86_64
+            os: windows-latest
+            asset: CLiteRTLM-windows-x86_64.dll
+          - name: macos-universal
+            os: macos-14
+            asset: CLiteRTLM-macos-universal.dylib
+    steps:
+      - name: Checkout LiteRT-LM
+        uses: actions/checkout@v4
+        with:
+          repository: google-ai-edge/LiteRT-LM
+          ref: ${{ env.LITERT_LM_REF }}
+          lfs: true
+          submodules: recursive
+          path: litert-lm
+
+      - name: Setup Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      # cc_shared_library overlay: one self-contained shared lib that exports
+      # the engine.h C ABI. Lives in its own package so we don't touch
+      # upstream's c/BUILD load lines. `//c:engine` is public + alwayslink.
+      - name: Write cc_shared_library overlay
+        shell: bash
+        run: |
+          mkdir -p litert-lm/litert_cshared
+          cat > litert-lm/litert_cshared/BUILD.bazel <<'EOF'
+          load("@rules_cc//cc:defs.bzl", "cc_shared_library")
+
+          cc_shared_library(
+              name = "CLiteRTLM",
+              roots = ["//c:engine"],
+              visibility = ["//visibility:public"],
+              user_link_flags = select({
+                  "@platforms//os:macos": [
+                      "-Wl,-install_name,@rpath/CLiteRTLM_mac.dylib",
+                  ],
+                  "@platforms//os:linux": [
+                      "-Wl,-soname,libCLiteRTLM.so",
+                  ],
+                  "//conditions:default": [],
+              }),
+          )
+          EOF
+          echo "----- overlay BUILD.bazel -----"
+          cat litert-lm/litert_cshared/BUILD.bazel
+
+      - name: Build (linux/macos)
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: litert-lm
+        run: |
+          set -euo pipefail
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            # Build both slices and lipo into a universal dylib.
+            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_arm64
+            cp "$(bazel cquery --cpu=darwin_arm64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_arm64.dylib
+            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_x86_64
+            cp "$(bazel cquery --cpu=darwin_x86_64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_x86_64.dylib
+            lipo -create -output "/tmp/${{ matrix.asset }}" /tmp/CLiteRTLM_arm64.dylib /tmp/CLiteRTLM_x86_64.dylib
+            install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "/tmp/${{ matrix.asset }}" || true
+          else
+            bazel build //litert_cshared:CLiteRTLM
+            cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
+          fi
+          ls -la "/tmp/${{ matrix.asset }}"
+
+      - name: Build (windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: litert-lm
+        run: |
+          set -euo pipefail
+          # Short output root to dodge MAX_PATH issues on Windows.
+          bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM --config=windows
+          # cc_shared_library emits CLiteRTLM.dll plus an import library
+          # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin).
+          dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM 2>/dev/null | grep -i '\.dll$' | head -n1)"
+          cp "$dll" "/tmp/${{ matrix.asset }}"
+          implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
+          cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
+          ls -la "/tmp/${{ matrix.asset }}" "/tmp/CLiteRTLM-windows-x86_64.lib"
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp
+          sha256() { if command -v shasum >/dev/null; then shasum -a 256 "$1" | awk '{print $1}'; else certutil -hashfile "$1" SHA256 | sed -n '2p' | tr -d '\r ' ; fi; }
+          sha256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          if [ -f CLiteRTLM-windows-x86_64.lib ]; then
+            sha256 CLiteRTLM-windows-x86_64.lib > CLiteRTLM-windows-x86_64.lib.sha256
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clitertlm-${{ matrix.name }}
+          path: |
+            /tmp/CLiteRTLM*.dylib
+            /tmp/CLiteRTLM*.so
+            /tmp/libCLiteRTLM*.so
+            /tmp/CLiteRTLM*.dll
+            /tmp/CLiteRTLM*.lib
+            /tmp/*.sha256
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List collected assets
+        run: ls -la dist
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: CLiteRTLM prebuilt (${{ env.LITERT_LM_REF }})
+          body: |
+            CLiteRTLM C shared libraries built from
+            google-ai-edge/LiteRT-LM @ `${{ env.LITERT_LM_REF }}`.
+
+            Consumed by `ellisii-llm-litert` build.rs when
+            `LITERT_LM_PREBUILT=1` is set. Each `<asset>` ships with a
+            matching `<asset>.sha256`.
+          files: dist/*
+          fail_on_unmatched_files: true
