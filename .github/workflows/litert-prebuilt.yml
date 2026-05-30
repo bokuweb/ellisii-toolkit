@@ -162,8 +162,12 @@ jobs:
           # Short output root to dodge MAX_PATH issues on Windows.
           retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows
           # cc_binary(linkshared) emits CLiteRTLM.dll plus an import library
-          # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin).
-          dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM.dll 2>/dev/null | grep -i '\.dll$' | head -n1)"
+          # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin). cquery
+          # --output=files doesn't reliably list the linkshared outputs, so copy
+          # straight from the known bazel-bin path (fall back to a find).
+          dll="bazel-bin/litert_cshared/CLiteRTLM.dll"
+          test -f "$dll" || dll="$(find bazel-bin -iname 'CLiteRTLM*.dll' | head -n1)"
+          test -n "$dll" && test -f "$dll"
           cp "$dll" "/tmp/${{ matrix.asset }}"
           implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
           cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
