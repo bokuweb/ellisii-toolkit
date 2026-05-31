@@ -50,17 +50,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # linux/windows: build the C shared lib from source via Bazel.
           - name: linux-x86_64
             os: ubuntu-latest
+            method: bazel
             asset: libCLiteRTLM-linux-x86_64.so
           - name: windows-x86_64
             os: windows-latest
+            method: bazel
             asset: CLiteRTLM-windows-x86_64.dll
+          # macOS: Google already ships a universal (arm64+x86_64) dylib inside
+          # the official xcframework, and building a shared lib from source hits
+          # an upstream cxx/libc++ template error under our config. So just
+          # repackage the official dylib — guaranteed correct, no Bazel.
           - name: macos-universal
             os: macos-14
+            method: xcframework
             asset: CLiteRTLM-macos-universal.dylib
     steps:
       - name: Checkout LiteRT-LM
+        if: matrix.method == 'bazel'
         uses: actions/checkout@v4
         with:
           repository: google-ai-edge/LiteRT-LM
@@ -70,77 +79,169 @@ jobs:
           path: litert-lm
 
       - name: Setup Bazelisk
+        if: matrix.method == 'bazel'
         uses: bazelbuild/setup-bazelisk@v3
 
-      # cc_shared_library overlay: one self-contained shared lib that exports
-      # the engine.h C ABI. Lives in its own package so we don't touch
-      # upstream's c/BUILD load lines. `//c:engine` is public + alwayslink.
-      - name: Write cc_shared_library overlay
+      # Self-contained shared lib that exports the engine.h C ABI. Lives in its
+      # own package so we don't touch upstream's c/BUILD load lines.
+      # `//c:engine` is public + alwayslink.
+      #
+      # Two rules, one per platform leg:
+      #   * linux -> cc_shared_library (proven): the GNU linker pulls every
+      #     transitive static archive (incl. the Rust libs) into the .so.
+      #   * windows -> cc_binary(linkshared): cc_shared_library DROPS the Rust
+      #     static archives (tokenizers_*, llg_*, cxxbridge1 glue) from the MSVC
+      #     link line -> 83 unresolved externals. A linkshared cc_binary links
+      #     the FULL transitive static closure exactly like upstream's working
+      #     litert_lm_main binary, so those archives are present. The C ABI is
+      #     exported via __declspec(dllexport) (LITERT_LM_C_API_EXPORT).
+      - name: Write shared-lib overlay
+        if: matrix.method == 'bazel'
         shell: bash
         run: |
           mkdir -p litert-lm/litert_cshared
           cat > litert-lm/litert_cshared/BUILD.bazel <<'EOF'
-          load("@rules_cc//cc:defs.bzl", "cc_shared_library")
+          load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_shared_library")
 
           cc_shared_library(
               name = "CLiteRTLM",
               roots = ["//c:engine"],
               visibility = ["//visibility:public"],
               user_link_flags = select({
-                  "@platforms//os:macos": [
-                      "-Wl,-install_name,@rpath/CLiteRTLM_mac.dylib",
-                  ],
                   "@platforms//os:linux": [
                       "-Wl,-soname,libCLiteRTLM.so",
                   ],
                   "//conditions:default": [],
               }),
           )
+
+          cc_binary(
+              name = "CLiteRTLM.dll",
+              linkshared = True,
+              deps = ["//c:engine"],
+              visibility = ["//visibility:public"],
+          )
           EOF
           echo "----- overlay BUILD.bazel -----"
           cat litert-lm/litert_cshared/BUILD.bazel
 
-      - name: Build (linux/macos)
-        if: runner.os != 'Windows'
+      - name: Build (linux)
+        if: matrix.method == 'bazel' && runner.os == 'Linux'
         shell: bash
         working-directory: litert-lm
         run: |
           set -euo pipefail
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            # Build both slices and lipo into a universal dylib.
-            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_arm64
-            cp "$(bazel cquery --cpu=darwin_arm64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_arm64.dylib
-            bazel build //litert_cshared:CLiteRTLM --cpu=darwin_x86_64
-            cp "$(bazel cquery --cpu=darwin_x86_64 --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" /tmp/CLiteRTLM_x86_64.dylib
-            lipo -create -output "/tmp/${{ matrix.asset }}" /tmp/CLiteRTLM_arm64.dylib /tmp/CLiteRTLM_x86_64.dylib
-            install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "/tmp/${{ matrix.asset }}" || true
-          else
-            bazel build //litert_cshared:CLiteRTLM
-            cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
-          fi
-          ls -la "/tmp/${{ matrix.asset }}"
+          # minizip's http_archive pulls zlib-1.3.1.tar.gz from zlib.net, which
+          # flakes badly (serves error pages -> checksum mismatch). Pre-seed the
+          # official tarball from GitHub into a --distdir so Bazel uses the local
+          # copy and never touches zlib.net. Bazel matches it by basename+sha256.
+          mkdir -p /tmp/distdir
+          curl -fL --retry 5 --retry-all-errors -o /tmp/distdir/zlib-1.3.1.tar.gz \
+            https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23  /tmp/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
+          # http_archive fetches occasionally 502 from GitHub; retry the build
+          # (Bazel resumes fetching, doesn't rebuild completed actions).
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
+          retry bazel build //litert_cshared:CLiteRTLM --distdir=/tmp/distdir
+          # Stage artifacts under RUNNER_TEMP (not git-bash /tmp): upload-artifact
+          # resolves /tmp against the current drive on Windows -> a different dir
+          # than git-bash's /tmp. RUNNER_TEMP is consistent across bash + action.
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "$OUT/${{ matrix.asset }}"
+          ls -la "$OUT/${{ matrix.asset }}"
 
       - name: Build (windows)
-        if: runner.os == 'Windows'
+        if: matrix.method == 'bazel' && runner.os == 'Windows'
         shell: bash
         working-directory: litert-lm
+        env:
+          # Git-bash/MSYS rewrites the leading `//` of a Bazel label into a
+          # Windows path (`//litert_cshared:CLiteRTLM` -> `/litert_cshared:...`),
+          # which Bazel rejects ("package names may not start with '/'").
+          # Disable MSYS arg/path conversion so labels pass through verbatim.
+          MSYS2_ARG_CONV_EXCL: "*"
+          MSYS_NO_PATHCONV: "1"
         run: |
           set -euo pipefail
+          # The runner ships an Android NDK and exports ANDROID_NDK_HOME etc.
+          # litert-lm's WORKSPACE has android_ndk_repository auto-detect it, and
+          # on Windows its symlink step writes outside the repo dir and aborts
+          # analysis ("Cannot write outside of the repository directory").
+          # We don't need the NDK for a host build; unset the vars so the repo
+          # rule becomes a no-op empty repository.
+          unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME ANDROID_HOME ANDROID_SDK_ROOT
+          # minizip's http_archive pulls zlib-1.3.1.tar.gz from zlib.net, which
+          # flakes badly (serves error pages -> checksum mismatch, varies every
+          # retry). Pre-seed the official tarball from GitHub into a --distdir so
+          # Bazel uses the local copy and never touches zlib.net. Bazel matches
+          # it by basename + sha256.
+          # NOTE: this step disables MSYS path conversion, so the *native*
+          # Windows curl cannot open an MSYS path like /c/distdir/... ("cannot
+          # find the file specified"). Use the Windows drive form C:/distdir.
+          mkdir -p C:/distdir
+          curl -fL --retry 5 --retry-all-errors -o C:/distdir/zlib-1.3.1.tar.gz \
+            https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23 *C:/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           # Short output root to dodge MAX_PATH issues on Windows.
-          bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM --config=windows
-          # cc_shared_library emits CLiteRTLM.dll plus an import library
-          # (named CLiteRTLM.if.lib or CLiteRTLM.lib under bazel-bin).
-          dll="$(bazel --output_user_root=C:/b cquery --config=windows --output=files //litert_cshared:CLiteRTLM 2>/dev/null | grep -i '\.dll$' | head -n1)"
-          cp "$dll" "/tmp/${{ matrix.asset }}"
-          implib="$(find bazel-bin -iname 'CLiteRTLM*.lib' | head -n1)"
-          cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
-          ls -la "/tmp/${{ matrix.asset }}" "/tmp/CLiteRTLM-windows-x86_64.lib"
+          retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows --distdir=C:/distdir
+          # cc_binary(linkshared) emits CLiteRTLM.dll plus an import library
+          # (named CLiteRTLM.if.lib or CLiteRTLM.lib) under bazel-bin.
+          #
+          # IMPORTANT: the `bazel-bin` convenience symlink in the repo dir is a
+          # Windows *junction*, which Git-bash's `test -f` / `find` cannot
+          # traverse -> they silently resolve empty and `cp` gets ''. So resolve
+          # the REAL output dir via `bazel info bazel-bin` (a normal directory
+          # under C:/b), which find/test can walk. Must pass the same
+          # --config=windows so `info` reports the matching configuration's bin.
+          set -x
+          binroot="$(bazel --output_user_root=C:/b info --config=windows bazel-bin)"
+          echo "binroot=$binroot"
+          ls -la "$binroot/litert_cshared/" || true
+          dll="$binroot/litert_cshared/CLiteRTLM.dll"
+          if [ ! -f "$dll" ]; then
+            dll="$(find "$binroot" -iname 'CLiteRTLM*.dll' | head -n1)"
+          fi
+          echo "resolved dll=$dll"
+          test -n "$dll" && test -f "$dll"
+          # Stage under RUNNER_TEMP (cygpath -> POSIX) so upload-artifact finds it.
+          # git-bash /tmp != the action's /tmp on Windows; RUNNER_TEMP is shared.
+          OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$dll" "$OUT/${{ matrix.asset }}"
+          implib="$binroot/litert_cshared/CLiteRTLM.if.lib"
+          if [ ! -f "$implib" ]; then
+            implib="$(find "$binroot" -iname 'CLiteRTLM*.lib' | head -n1)"
+          fi
+          echo "resolved implib=$implib"
+          test -n "$implib" && test -f "$implib"
+          cp "$implib" "$OUT/CLiteRTLM-windows-x86_64.lib"
+          ls -la "$OUT/${{ matrix.asset }}" "$OUT/CLiteRTLM-windows-x86_64.lib"
+
+      - name: Repackage official macOS xcframework
+        if: matrix.method == 'xcframework'
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/google-ai-edge/LiteRT-LM/releases/download/${LITERT_LM_REF}/CLiteRTLM_mac.xcframework.zip"
+          echo "downloading $url"
+          curl -fsSL --retry 5 --retry-all-errors -o /tmp/xcf.zip "$url"
+          unzip -q -o /tmp/xcf.zip -d /tmp/xcf
+          # Universal slice inside the xcframework; its install_name is already
+          # @rpath/CLiteRTLM_mac.dylib (what build.rs expects).
+          dylib="$(find /tmp/xcf -path '*macos-arm64_x86_64*/CLiteRTLM_mac.dylib' | head -n1)"
+          test -n "$dylib"
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$dylib" "$OUT/${{ matrix.asset }}"
+          install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "$OUT/${{ matrix.asset }}" || true
+          lipo -info "$OUT/${{ matrix.asset }}" || true
+          ls -la "$OUT/${{ matrix.asset }}"
 
       - name: Checksums
         shell: bash
         run: |
           set -euo pipefail
-          cd /tmp
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cd "$OUT"
           sha256() { if command -v shasum >/dev/null; then shasum -a 256 "$1" | awk '{print $1}'; else certutil -hashfile "$1" SHA256 | sed -n '2p' | tr -d '\r ' ; fi; }
           sha256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
           if [ -f CLiteRTLM-windows-x86_64.lib ]; then
@@ -152,12 +253,12 @@ jobs:
         with:
           name: clitertlm-${{ matrix.name }}
           path: |
-            /tmp/CLiteRTLM*.dylib
-            /tmp/CLiteRTLM*.so
-            /tmp/libCLiteRTLM*.so
-            /tmp/CLiteRTLM*.dll
-            /tmp/CLiteRTLM*.lib
-            /tmp/*.sha256
+            ${{ runner.temp }}/CLiteRTLM*.dylib
+            ${{ runner.temp }}/CLiteRTLM*.so
+            ${{ runner.temp }}/libCLiteRTLM*.so
+            ${{ runner.temp }}/CLiteRTLM*.dll
+            ${{ runner.temp }}/CLiteRTLM*.lib
+            ${{ runner.temp }}/*.sha256
           if-no-files-found: error
 
   release:
