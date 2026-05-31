@@ -143,8 +143,12 @@ jobs:
           # (Bazel resumes fetching, doesn't rebuild completed actions).
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           retry bazel build //litert_cshared:CLiteRTLM --distdir=/tmp/distdir
-          cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "/tmp/${{ matrix.asset }}"
-          ls -la "/tmp/${{ matrix.asset }}"
+          # Stage artifacts under RUNNER_TEMP (not git-bash /tmp): upload-artifact
+          # resolves /tmp against the current drive on Windows -> a different dir
+          # than git-bash's /tmp. RUNNER_TEMP is consistent across bash + action.
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$(bazel cquery --output=files //litert_cshared:CLiteRTLM 2>/dev/null | head -n1)" "$OUT/${{ matrix.asset }}"
+          ls -la "$OUT/${{ matrix.asset }}"
 
       - name: Build (windows)
         if: matrix.method == 'bazel' && runner.os == 'Windows'
@@ -200,15 +204,18 @@ jobs:
           fi
           echo "resolved dll=$dll"
           test -n "$dll" && test -f "$dll"
-          cp "$dll" "/tmp/${{ matrix.asset }}"
+          # Stage under RUNNER_TEMP (cygpath -> POSIX) so upload-artifact finds it.
+          # git-bash /tmp != the action's /tmp on Windows; RUNNER_TEMP is shared.
+          OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$dll" "$OUT/${{ matrix.asset }}"
           implib="$binroot/litert_cshared/CLiteRTLM.if.lib"
           if [ ! -f "$implib" ]; then
             implib="$(find "$binroot" -iname 'CLiteRTLM*.lib' | head -n1)"
           fi
           echo "resolved implib=$implib"
           test -n "$implib" && test -f "$implib"
-          cp "$implib" "/tmp/CLiteRTLM-windows-x86_64.lib"
-          ls -la "/tmp/${{ matrix.asset }}" "/tmp/CLiteRTLM-windows-x86_64.lib"
+          cp "$implib" "$OUT/CLiteRTLM-windows-x86_64.lib"
+          ls -la "$OUT/${{ matrix.asset }}" "$OUT/CLiteRTLM-windows-x86_64.lib"
 
       - name: Repackage official macOS xcframework
         if: matrix.method == 'xcframework'
@@ -223,16 +230,18 @@ jobs:
           # @rpath/CLiteRTLM_mac.dylib (what build.rs expects).
           dylib="$(find /tmp/xcf -path '*macos-arm64_x86_64*/CLiteRTLM_mac.dylib' | head -n1)"
           test -n "$dylib"
-          cp "$dylib" "/tmp/${{ matrix.asset }}"
-          install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "/tmp/${{ matrix.asset }}" || true
-          lipo -info "/tmp/${{ matrix.asset }}" || true
-          ls -la "/tmp/${{ matrix.asset }}"
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cp "$dylib" "$OUT/${{ matrix.asset }}"
+          install_name_tool -id "@rpath/CLiteRTLM_mac.dylib" "$OUT/${{ matrix.asset }}" || true
+          lipo -info "$OUT/${{ matrix.asset }}" || true
+          ls -la "$OUT/${{ matrix.asset }}"
 
       - name: Checksums
         shell: bash
         run: |
           set -euo pipefail
-          cd /tmp
+          OUT="$RUNNER_TEMP"; command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -u "$RUNNER_TEMP")"
+          cd "$OUT"
           sha256() { if command -v shasum >/dev/null; then shasum -a 256 "$1" | awk '{print $1}'; else certutil -hashfile "$1" SHA256 | sed -n '2p' | tr -d '\r ' ; fi; }
           sha256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
           if [ -f CLiteRTLM-windows-x86_64.lib ]; then
@@ -244,12 +253,12 @@ jobs:
         with:
           name: clitertlm-${{ matrix.name }}
           path: |
-            /tmp/CLiteRTLM*.dylib
-            /tmp/CLiteRTLM*.so
-            /tmp/libCLiteRTLM*.so
-            /tmp/CLiteRTLM*.dll
-            /tmp/CLiteRTLM*.lib
-            /tmp/*.sha256
+            ${{ runner.temp }}/CLiteRTLM*.dylib
+            ${{ runner.temp }}/CLiteRTLM*.so
+            ${{ runner.temp }}/libCLiteRTLM*.so
+            ${{ runner.temp }}/CLiteRTLM*.dll
+            ${{ runner.temp }}/CLiteRTLM*.lib
+            ${{ runner.temp }}/*.sha256
           if-no-files-found: error
 
   release:
