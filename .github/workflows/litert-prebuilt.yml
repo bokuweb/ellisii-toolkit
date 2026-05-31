@@ -171,10 +171,13 @@ jobs:
           # retry). Pre-seed the official tarball from GitHub into a --distdir so
           # Bazel uses the local copy and never touches zlib.net. Bazel matches
           # it by basename + sha256.
-          mkdir -p /c/distdir
-          curl -fL --retry 5 --retry-all-errors -o /c/distdir/zlib-1.3.1.tar.gz \
+          # NOTE: this step disables MSYS path conversion, so the *native*
+          # Windows curl cannot open an MSYS path like /c/distdir/... ("cannot
+          # find the file specified"). Use the Windows drive form C:/distdir.
+          mkdir -p C:/distdir
+          curl -fL --retry 5 --retry-all-errors -o C:/distdir/zlib-1.3.1.tar.gz \
             https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23 */c/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
+          echo "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23 *C:/distdir/zlib-1.3.1.tar.gz" | sha256sum -c -
           retry() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed; retrying in 30s"; sleep 30; done; return 1; }
           # Short output root to dodge MAX_PATH issues on Windows.
           retry bazel --output_user_root=C:/b build //litert_cshared:CLiteRTLM.dll --config=windows --distdir=C:/distdir
