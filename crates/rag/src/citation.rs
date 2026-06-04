@@ -322,6 +322,7 @@ mod tests {
             },
             score: 0.5,
             source: HitSource::Vector,
+            semantic_score: None,
         }
     }
 

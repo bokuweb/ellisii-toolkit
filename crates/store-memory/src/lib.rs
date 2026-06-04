@@ -59,6 +59,7 @@ impl VectorStore for InMemoryStore {
                 chunk: inner.chunks[i].clone(),
                 score,
                 source: HitSource::Vector,
+                semantic_score: Some(score),
             })
             .collect())
     }
@@ -318,6 +319,7 @@ impl VectorStore for InMemoryStore {
                 chunk: c.clone(),
                 score: 1.0,
                 source: HitSource::Keyword,
+                semantic_score: None,
             })
             .collect())
     }

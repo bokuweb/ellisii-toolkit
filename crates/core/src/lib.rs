@@ -89,6 +89,13 @@ pub struct SearchHit {
     pub score: f32,
     #[serde(default)]
     pub source: HitSource,
+    /// ベクトル検索由来のコサイン類似度 (0.0〜1.0 = 1 - コサイン距離)。
+    /// hybrid 検索でこの chunk がベクトル ranking に出現した場合に設定される。
+    /// keyword のみでヒットした chunk は `None`。
+    /// RRF の融合スコア (`score`) と違い「順位」ではなく「類似度の量」を表すため、
+    /// UI で類似度 % を出す用途に使える (ランキング自体は `score` のまま不変)。
+    #[serde(default)]
+    pub semantic_score: Option<f32>,
 }
 
 /// retrieve 段で top_k に並べる前に弾きたい「ノイズ chunk」を判定する。
