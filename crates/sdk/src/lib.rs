@@ -1500,6 +1500,8 @@ impl Ellisii {
                     chunk,
                     score,
                     source: ellisii_core::HitSource::Hybrid,
+                    // backfill (pool に無かった scored chunk) はベクトル類似度を持たない。
+                    semantic_score: None,
                 });
             }
         }
@@ -2034,6 +2036,9 @@ impl Ellisii {
                         chunk: c,
                         score: 1.0,
                         source: ellisii_core::HitSource::Vector,
+                        // intent ルーティングの representative chunk は placeholder score なので
+                        // 実コサインではない。類似度 % には使わない。
+                        semantic_score: None,
                     })
                     .collect()
             }
@@ -2048,6 +2053,9 @@ impl Ellisii {
                         chunk: c,
                         score: 1.0,
                         source: ellisii_core::HitSource::Vector,
+                        // intent ルーティングの representative chunk は placeholder score なので
+                        // 実コサインではない。類似度 % には使わない。
+                        semantic_score: None,
                     })
                     .collect()
             }

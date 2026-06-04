@@ -484,6 +484,12 @@ pub fn rrf_weighted(rankings: &[(Vec<SearchHit>, f32)], top_k: usize) -> Vec<Sea
                 .or_insert((0.0, 0, (*hit).clone()));
             entry.0 += weight / (k + rank as f32 + 1.0);
             entry.1 += 1;
+            // representative が keyword ranking 由来でも、ベクトル ranking 側が持つ
+            // コサイン類似度 (semantic_score) を保持する。融合スコア (score) は順位ベースに
+            // なるが、semantic_score は「類似度の量」として UI 表示に使える。
+            if hit.semantic_score.is_some() {
+                entry.2.semantic_score = hit.semantic_score;
+            }
         }
     }
     let mut all: Vec<(f32, u32, SearchHit)> = scores.into_values().collect();
@@ -592,6 +598,7 @@ mod tests {
             },
             score: 0.0,
             source: HS::Vector,
+            semantic_score: None,
         }
     }
 
@@ -655,6 +662,7 @@ mod tests {
             },
             score: 0.0,
             source: HS::Vector,
+            semantic_score: None,
         };
         let toc = SearchHit {
             chunk: Chunk {
@@ -669,6 +677,7 @@ mod tests {
             },
             score: 0.0,
             source: HS::Vector,
+            semantic_score: None,
         };
         // stub と toc を上位に置いても、フィルタで弾かれて body だけが残る
         let r = rrf(&[vec![stub.clone(), toc.clone(), body.clone()]], 5);

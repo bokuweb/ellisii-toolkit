@@ -311,10 +311,14 @@ impl VectorStore for SqliteStore {
                             continue;
                         }
                     }
+                    let cosine = 1.0 - dist as f32;
                     hits.push(SearchHit {
                         chunk,
-                        score: 1.0 - dist as f32,
+                        score: cosine,
                         source: HitSource::Vector,
+                        // ベクトル検索のスコア (1 - コサイン距離) を類似度として保持する。
+                        // RRF 融合で score が順位ベースに上書きされても残す。
+                        semantic_score: Some(cosine),
                     });
                     if hits.len() >= top_k {
                         break;
@@ -855,6 +859,8 @@ impl VectorStore for SqliteStore {
                         chunk,
                         score: -(score as f32),
                         source: HitSource::Keyword,
+                        // keyword (FTS) ヒットはベクトル類似度を持たない。
+                        semantic_score: None,
                     });
                     if hits.len() >= top_k {
                         break;
