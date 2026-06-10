@@ -34,6 +34,7 @@ use ellisii_ingest::Ingestor;
 use ellisii_jp_tokenizer_bigram::CharBigramTokenizer;
 use ellisii_jp_tokenizer_core::JpTokenizer;
 use ellisii_llm_core::{LlmBackend, LlmRequest};
+use ellisii_ocr::{OcrBackend, PdfRasterizer};
 use ellisii_parsers_core::detect_kind;
 use ellisii_provence_core::ContextCompressor;
 use ellisii_query_rewriter_core::{QueryRewriter, RewrittenQueries};
@@ -82,6 +83,9 @@ pub struct EllisiiBuilder {
     compressor: Option<Arc<dyn ContextCompressor>>,
     chunker: Option<Arc<dyn ellisii_chunker::Chunker>>,
     caption_enricher: Option<Arc<dyn ellisii_core::CaptionEnricher>>,
+    ocr: Option<Arc<dyn OcrBackend>>,
+    pdf_rasterizer: Option<Arc<dyn PdfRasterizer>>,
+    ocr_cache_dir: Option<PathBuf>,
     notebook_id: Option<Uuid>,
 }
 
@@ -103,6 +107,9 @@ impl EllisiiBuilder {
             compressor: None,
             chunker: None,
             caption_enricher: None,
+            ocr: None,
+            pdf_rasterizer: None,
+            ocr_cache_dir: None,
             notebook_id: None,
         }
     }
@@ -414,6 +421,39 @@ impl EllisiiBuilder {
         Ok(self)
     }
 
+    /// OCR バックエンドを設定する ([`Ingestor::with_ocr`] の SDK 公開口)。
+    ///
+    /// 設定すると ingest 時に以下のフォールバックが有効になる:
+    /// - 画像 (png/jpg 等): そのまま OCR にかける
+    /// - PDF: [`Self::with_pdf_rasterizer`] が併せて設定されている場合のみ、
+    ///   テキストレイヤが空のページを画像化して OCR で補完する
+    ///   (スキャン PDF / テキスト・スキャン混在 PDF の救済)
+    ///
+    /// 実装は `ellisii_ocr::NdlocrBackend` (feature `onnx`) か、任意の
+    /// [`OcrBackend`] 実装を渡す。省略時は OCR を行わず、テキストレイヤの
+    /// 無い PDF は 0 chunks になる (従来挙動)。
+    pub fn with_ocr(mut self, ocr: Arc<dyn OcrBackend>) -> Self {
+        self.ocr = Some(ocr);
+        self
+    }
+
+    /// PDF のページ画像化を設定する ([`Ingestor::with_pdf_rasterizer`] の
+    /// SDK 公開口)。`ellisii_parser_pdf::PdfiumRasterizer` か任意の
+    /// [`PdfRasterizer`] 実装を渡す。[`Self::with_ocr`] と併用しないと
+    /// PDF の OCR フォールバックは動かない。
+    pub fn with_pdf_rasterizer(mut self, r: Arc<dyn PdfRasterizer>) -> Self {
+        self.pdf_rasterizer = Some(r);
+        self
+    }
+
+    /// per-page OCR 結果キャッシュのルートディレクトリ
+    /// ([`Ingestor::with_ocr_cache_dir`] の SDK 公開口)。設定すると同一 PDF の
+    /// 再 ingest 時に OCR 済みページを完全に skip できる。
+    pub fn with_ocr_cache_dir(mut self, dir: PathBuf) -> Self {
+        self.ocr_cache_dir = Some(dir);
+        self
+    }
+
     /// notebook_id を明示する (省略時は `Uuid::nil()`)。複数 namespace を持ちたい
     /// アプリで使う。
     pub fn with_notebook_id(mut self, id: Uuid) -> Self {
@@ -452,6 +492,15 @@ impl EllisiiBuilder {
         }
         if let Some(e) = self.caption_enricher.clone() {
             ingestor = ingestor.with_caption_enricher(e);
+        }
+        if let Some(o) = self.ocr.clone() {
+            ingestor = ingestor.with_ocr(o);
+        }
+        if let Some(r) = self.pdf_rasterizer.clone() {
+            ingestor = ingestor.with_pdf_rasterizer(r);
+        }
+        if let Some(d) = self.ocr_cache_dir.clone() {
+            ingestor = ingestor.with_ocr_cache_dir(d);
         }
 
         // intent_classifier の自動構築:

@@ -1244,6 +1244,7 @@ dependencies = [
  "ellisii-llm-core",
  "ellisii-llm-prompt",
  "serde",
+ "sha2",
  "tokio",
  "tracing",
 ]

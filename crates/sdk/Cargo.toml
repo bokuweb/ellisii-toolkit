@@ -20,6 +20,7 @@ ellisii-parsers.workspace = true
 ellisii-parsers-core.workspace = true
 ellisii-chunker.workspace = true
 ellisii-ingest.workspace = true
+ellisii-ocr.workspace = true
 ellisii-embed-core.workspace = true
 ellisii-embed-dummy.workspace = true
 ellisii-store-core.workspace = true
@@ -37,7 +38,6 @@ ellisii-query-rewriter-passthrough.workspace = true
 ellisii-query-rewriter-llm.workspace = true
 ellisii-provence-core.workspace = true
 ellisii-provence-passthrough.workspace = true
-ellisii-ocr.workspace = true
 
 [features]
 default = []
