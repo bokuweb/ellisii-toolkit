@@ -221,6 +221,66 @@ pub fn lexical_boost_in_place(query: &str, hits: &mut [SearchHit], alpha: f32) {
     });
 }
 
+/// source メタ (title / created_at) に基づく score boost。`src-tauri` の
+/// metadata boost (title-match +0.15 / recency 7日 +0.10・30日 +0.05) を移植。
+///
+/// - **title-match** (`title_boost == true`): query 語が source title に
+///   部分一致、または 3 文字以上の query 全体が title に含まれれば `+0.15`
+/// - **recency** (`recency_boost == true` かつ `created_at_ms > 0`):
+///   取り込みから 7 日以内 `+0.10`、30 日以内 `+0.05`
+///
+/// 2 つの boost は加算され `score *= 1.0 + boost` で適用 (lexical_boost と同じ
+/// 乗算)。`provider` が `None` を返した source には何も加えない。`now_ms` は
+/// 呼び出し側が `SystemTime::now()` を渡す (テストで固定時刻を注入できる)。
+pub fn source_meta_boost_in_place(
+    query: &str,
+    hits: &mut [SearchHit],
+    provider: &dyn ellisii_core::SourceMetaProvider,
+    now_ms: i64,
+    title_boost: bool,
+    recency_boost: bool,
+) {
+    if hits.is_empty() || (!title_boost && !recency_boost) {
+        return;
+    }
+    const DAY_MS: i64 = 24 * 3600 * 1000;
+    let terms = extract_terms(query);
+    let q_lower = query.to_lowercase();
+    let q_chars = q_lower.chars().count();
+    for h in hits.iter_mut() {
+        let Some(meta) = provider.source_meta(h.chunk.source_id) else {
+            continue;
+        };
+        let mut boost = 0.0_f32;
+        if title_boost {
+            let title_lower = meta.title.to_lowercase();
+            let term_hit = terms
+                .iter()
+                .any(|t| !t.is_empty() && title_lower.contains(t.as_str()));
+            let whole_hit = q_chars >= 3 && title_lower.contains(&q_lower);
+            if term_hit || whole_hit {
+                boost += 0.15;
+            }
+        }
+        if recency_boost && meta.created_at_ms > 0 {
+            let age = (now_ms - meta.created_at_ms).max(0);
+            if age < 7 * DAY_MS {
+                boost += 0.10;
+            } else if age < 30 * DAY_MS {
+                boost += 0.05;
+            }
+        }
+        if boost > 0.0 {
+            h.score *= 1.0 + boost;
+        }
+    }
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+
 /// 別途事前構築した `(chunk_id, caption)` の一覧を全走査して、query と overlap の高いものを
 /// pool 側に注入する。pool に既にいる場合は score 加算、いない場合は新たな id_score として
 /// 追加 (caller 側で chunk-id → SearchHit を引き直す前提)。
@@ -787,6 +847,85 @@ mod tests {
         // boost 後、term coverage の高い 2 番目が先頭に来る
         assert!(hits[0].chunk.text.contains("秘密保持義務"), "hits={hits:?}");
         assert!(hits[0].score > hits[1].score);
+    }
+
+    struct MapProvider(std::collections::HashMap<Uuid, ellisii_core::SourceMeta>);
+    impl ellisii_core::SourceMetaProvider for MapProvider {
+        fn source_meta(&self, id: Uuid) -> Option<ellisii_core::SourceMeta> {
+            self.0.get(&id).cloned()
+        }
+    }
+
+    #[test]
+    fn source_meta_boost_promotes_title_match_and_recent() {
+        let now: i64 = 1_700_000_000_000;
+        let day = 24 * 3600 * 1000;
+        let s_title = Uuid::new_v4(); // title 一致
+        let s_recent = Uuid::new_v4(); // 新しい (3 日前)
+        let s_none = Uuid::new_v4(); // メタ無し
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            s_title,
+            ellisii_core::SourceMeta {
+                title: "秘密保持契約書.docx".into(),
+                created_at_ms: now - 100 * day, // 古い (recency 効かない)
+            },
+        );
+        map.insert(
+            s_recent,
+            ellisii_core::SourceMeta {
+                title: "無関係なファイル.txt".into(),
+                created_at_ms: now - 3 * day,
+            },
+        );
+        let provider = MapProvider(map);
+
+        let mut hits = vec![
+            hit_with_source(s_none, 1.0),
+            hit_with_source(s_title, 1.0),
+            hit_with_source(s_recent, 1.0),
+        ];
+        source_meta_boost_in_place("秘密保持の条項", &mut hits, &provider, now, true, true);
+        // title 一致 (×1.15) と recent (×1.10) が無印 (×1.0) を上回る
+        let score = |sid: Uuid| {
+            hits.iter()
+                .find(|h| h.chunk.source_id == sid)
+                .unwrap()
+                .score
+        };
+        assert!(score(s_title) > score(s_none));
+        assert!(score(s_recent) > score(s_none));
+        // title-match (+0.15) > recency-7d (+0.10)
+        assert!(score(s_title) > score(s_recent));
+        // メタ無し source は素通り
+        assert_eq!(score(s_none), 1.0);
+    }
+
+    #[test]
+    fn source_meta_boost_respects_flags() {
+        let now: i64 = 1_700_000_000_000;
+        let s = Uuid::new_v4();
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            s,
+            ellisii_core::SourceMeta {
+                title: "契約書".into(),
+                created_at_ms: now - 1000, // ごく最近
+            },
+        );
+        let provider = MapProvider(map);
+        // 両方 false なら no-op
+        let mut hits = vec![hit_with_source(s, 1.0)];
+        source_meta_boost_in_place("契約", &mut hits, &provider, now, false, false);
+        assert_eq!(hits[0].score, 1.0);
+        // recency だけ true: title 一致でも title boost は乗らず recency のみ
+        let mut hits = vec![hit_with_source(s, 1.0)];
+        source_meta_boost_in_place("契約", &mut hits, &provider, now, false, true);
+        assert!(
+            (hits[0].score - 1.10).abs() < 1e-5,
+            "score={}",
+            hits[0].score
+        );
     }
 
     #[test]
