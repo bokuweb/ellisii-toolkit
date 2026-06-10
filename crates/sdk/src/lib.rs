@@ -776,6 +776,16 @@ pub struct SearchOptions {
     /// source 数は ingest 後の最初の検索で 1 度だけ計算し cache される。
     /// 既定 `false` (= 無効) で behavior 完全温存。
     pub auto_max_chunks_per_source: bool,
+    /// chunk **本文** に対するクエリ語の coverage (term overlap) で `score` を
+    /// 乗算 boost する ([`ellisii_rag::rerank::lexical_boost_in_place`])。
+    ///
+    /// hybrid (vector + keyword) は RRF で「順位」を融合するため「クエリ語が本文に
+    /// 何語マッチしたか」という量的情報が落ちる。この boost はそれを補い、口語クエリ
+    /// でもキーワードが濃く出現する chunk を上位へ押し上げる。caption / heading rerank
+    /// が「見出し / caption」を見るのに対し本 boost は「本文」を見るので直交し、併用可。
+    /// boost 量は最大 +50% (`src-tauri` の `lexical_overlap_boost` と同じ alpha=0.5)。
+    /// 既定 `false` (= behavior 完全温存)。
+    pub lexical_boost: bool,
 }
 
 impl Default for SearchOptions {
@@ -796,6 +806,7 @@ impl Default for SearchOptions {
             heading_rerank: false,
             auto_heading_rerank: false,
             auto_max_chunks_per_source: false,
+            lexical_boost: false,
         }
     }
 }
@@ -900,6 +911,9 @@ pub struct AskOptions {
     /// `hits` が空 (general mode / smalltalk) のときは元から citation 不要なので
     /// 本フラグは無効化される。
     pub no_citation_retry: bool,
+    /// [`SearchOptions::lexical_boost`] と同じ。chunk 本文のクエリ語 coverage で
+    /// `score` を乗算 boost する。既定 `false`。
+    pub lexical_boost: bool,
 }
 
 impl Default for AskOptions {
@@ -925,6 +939,7 @@ impl Default for AskOptions {
             auto_heading_rerank: false,
             auto_max_chunks_per_source: false,
             no_citation_retry: false,
+            lexical_boost: false,
         }
     }
 }
@@ -1341,6 +1356,11 @@ impl Ellisii {
             // caption の後段で heading_path[-1] (= 章タイトル / 見出し) の bigram 一致で
             // 追加 boost。caption boost と同じ alpha=1.0 を採用。
             ellisii_rag::rerank::heading_boost_in_place(query, &mut fused, 1.0);
+        }
+        if opts.lexical_boost {
+            // chunk 本文のクエリ語 coverage で乗算 boost (alpha=0.5 = 最大 +50%)。
+            // caption / heading が「見出し」を見るのに対し本文を見るので直交する。
+            ellisii_rag::rerank::lexical_boost_in_place(query, &mut fused, 0.5);
         }
         // Run 16 で観測した non-composition 退行 (rewriter + CE で nDCG -0.016) を防ぐため、
         // rewriter が実際に variant を生成したクエリでは CE を自動 skip する。
@@ -2149,6 +2169,9 @@ impl Ellisii {
                             >= Self::HEADING_RERANK_AUTO_THRESHOLD);
                 if heading_on {
                     ellisii_rag::rerank::heading_boost_in_place(query, &mut fused, 1.0);
+                }
+                if opts.lexical_boost {
+                    ellisii_rag::rerank::lexical_boost_in_place(query, &mut fused, 0.5);
                 }
                 // Run 16 で観測した non-composition 退行 (rewriter + CE で nDCG -0.016) を防ぐ。
                 let ce_should_run = opts.ce_rerank_top_n > 0

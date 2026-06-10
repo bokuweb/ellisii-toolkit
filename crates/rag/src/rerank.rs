@@ -152,6 +152,75 @@ pub fn dedup_by_source_in_place(hits: &mut Vec<SearchHit>, max_per_source: usize
     });
 }
 
+/// query から「内容語ぽい term」を抽出する (lexical overlap boost 用)。
+///
+/// - ASCII 単語 (`[A-Za-z0-9_]{2,}`) を lowercase で
+/// - 日本語は CJK / かな / カナだけで構成される 2-gram (助詞・句読点を除く)
+///
+/// `src-tauri` の `extract_terms` を移植したもの。char-bigram tokenizer
+/// (FTS5 indexer) と整合する粒度で、口語クエリでも「実際に本文に出る部分文字列」を
+/// 拾えるようにしている。重複は除去済み。
+#[must_use]
+pub fn extract_terms(query: &str) -> Vec<String> {
+    const STOP_CHARS: [char; 13] = [
+        'は', 'が', 'を', 'に', 'で', 'と', 'の', 'へ', 'や', '、', '。', '?', '？',
+    ];
+    let mut out: Vec<String> = Vec::new();
+    // ASCII 単語
+    for token in query.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')) {
+        if token.len() >= 2 && token.chars().any(|c| c.is_ascii_alphanumeric()) {
+            out.push(token.to_lowercase());
+        }
+    }
+    // 日本語 2-gram (CJK / ひらがな / カタカナのみ)
+    let chars: Vec<char> = query
+        .chars()
+        .filter(|c| !c.is_whitespace() && !STOP_CHARS.contains(c))
+        .collect();
+    for w in chars.windows(2) {
+        let is_jp = |c: &char| {
+            ('一'..='龥').contains(c) || ('ぁ'..='ん').contains(c) || ('ァ'..='ヶ').contains(c)
+        };
+        if w.iter().all(is_jp) {
+            out.push(w.iter().collect());
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// クエリ語が chunk 本文にどれだけ含まれるか (term coverage) を `score` に
+/// 乗算 boost する。`src-tauri::lexical_overlap_boost` の移植。
+///
+/// boost = (本文に出現する term 数 / 全 term 数) × `alpha`。`alpha` は最大加算率
+/// (src-tauri は 0.5 = 最大 +50%)。`score *= 1.0 + boost` で適用し、再ソートする。
+///
+/// hybrid (vector + keyword RRF) は「順位の融合」なので、クエリ語が**実際に本文に
+/// 何語マッチしたか**という量的情報が落ちる。この boost はそれを補い、口語クエリでも
+/// キーワードが濃く出現する chunk を上位に押し上げる。caption / heading rerank とは
+/// 直交 (本文を見る) なので併用してよい。
+pub fn lexical_boost_in_place(query: &str, hits: &mut [SearchHit], alpha: f32) {
+    if alpha <= 0.0 || hits.is_empty() {
+        return;
+    }
+    let terms = extract_terms(query);
+    if terms.is_empty() {
+        return;
+    }
+    for h in hits.iter_mut() {
+        let lower = h.chunk.text.to_lowercase();
+        let hit = terms.iter().filter(|t| lower.contains(t.as_str())).count();
+        let ratio = hit as f32 / terms.len() as f32;
+        h.score *= 1.0 + ratio * alpha;
+    }
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+}
+
 /// 別途事前構築した `(chunk_id, caption)` の一覧を全走査して、query と overlap の高いものを
 /// pool 側に注入する。pool に既にいる場合は score 加算、いない場合は新たな id_score として
 /// 追加 (caller 側で chunk-id → SearchHit を引き直す前提)。
@@ -692,5 +761,42 @@ mod tests {
         let mut pool: Vec<SearchHit> = vec![];
         dedup_by_source_in_place(&mut pool, 1);
         assert!(pool.is_empty());
+    }
+
+    #[test]
+    fn extract_terms_splits_ascii_and_jp_bigrams() {
+        let terms = extract_terms("秘密保持義務はApache2について");
+        // ASCII 単語は lowercase
+        assert!(terms.contains(&"apache2".to_string()));
+        // 日本語 2-gram (助詞「は」は除外される)
+        assert!(terms.contains(&"秘密".to_string()));
+        assert!(terms.contains(&"保持".to_string()));
+        // 助詞単独や記号は含まれない
+        assert!(!terms.iter().any(|t| t.contains('は')));
+    }
+
+    #[test]
+    fn lexical_boost_promotes_chunk_with_more_query_terms() {
+        // 低スコアだがクエリ語が濃く出る chunk を、高スコアだが無関係な chunk より
+        // 上位へ押し上げる。
+        let mut hits = vec![
+            hit("これは全く無関係な本文です", 1.0),
+            hit("秘密保持義務は契約終了後も存続します", 0.75),
+        ];
+        lexical_boost_in_place("秘密保持義務の存続", &mut hits, 0.5);
+        // boost 後、term coverage の高い 2 番目が先頭に来る
+        assert!(hits[0].chunk.text.contains("秘密保持義務"), "hits={hits:?}");
+        assert!(hits[0].score > hits[1].score);
+    }
+
+    #[test]
+    fn lexical_boost_is_noop_for_zero_alpha_or_empty_terms() {
+        let mut hits = vec![hit("本文", 1.0)];
+        lexical_boost_in_place("クエリ", &mut hits, 0.0);
+        assert_eq!(hits[0].score, 1.0);
+        // term が抽出されないクエリ (記号のみ)
+        let mut hits = vec![hit("本文", 1.0)];
+        lexical_boost_in_place("、。?", &mut hits, 0.5);
+        assert_eq!(hits[0].score, 1.0);
     }
 }
