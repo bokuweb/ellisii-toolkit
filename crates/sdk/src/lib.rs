@@ -86,6 +86,7 @@ pub struct EllisiiBuilder {
     ocr: Option<Arc<dyn OcrBackend>>,
     pdf_rasterizer: Option<Arc<dyn PdfRasterizer>>,
     ocr_cache_dir: Option<PathBuf>,
+    source_meta: Option<Arc<dyn ellisii_core::SourceMetaProvider>>,
     notebook_id: Option<Uuid>,
 }
 
@@ -110,6 +111,7 @@ impl EllisiiBuilder {
             ocr: None,
             pdf_rasterizer: None,
             ocr_cache_dir: None,
+            source_meta: None,
             notebook_id: None,
         }
     }
@@ -121,6 +123,15 @@ impl EllisiiBuilder {
         enricher: Arc<dyn ellisii_core::CaptionEnricher>,
     ) -> Self {
         self.caption_enricher = Some(enricher);
+        self
+    }
+
+    /// 検索 score boost (title-match / recency) のための source メタ provider を
+    /// 設定する。`SearchOptions::title_boost` / `recency_boost` を有効にしたとき、
+    /// この provider が返す [`ellisii_core::SourceMeta`] (title / created_at) で
+    /// hit を boost する。未設定なら title/recency boost は no-op。
+    pub fn with_source_meta(mut self, provider: Arc<dyn ellisii_core::SourceMetaProvider>) -> Self {
+        self.source_meta = Some(provider);
         self
     }
 
@@ -524,6 +535,7 @@ impl EllisiiBuilder {
             index_cache: self.index_cache,
             query_rewriter: self.query_rewriter,
             compressor: self.compressor,
+            source_meta: self.source_meta,
             ingestor,
             notebook_id,
             caption_cache: std::sync::Mutex::new(None),
@@ -786,6 +798,14 @@ pub struct SearchOptions {
     /// boost 量は最大 +50% (`src-tauri` の `lexical_overlap_boost` と同じ alpha=0.5)。
     /// 既定 `false` (= behavior 完全温存)。
     pub lexical_boost: bool,
+    /// source の **title / ファイル名** に query 語が一致する hit を boost する
+    /// ([`ellisii_rag::rerank::source_meta_boost_in_place`], `+0.15`)。
+    /// `with_source_meta` で provider を設定していないと no-op。既定 `false`。
+    pub title_boost: bool,
+    /// 取り込みが **新しい** source の hit を boost する (7 日 `+0.10` / 30 日 `+0.05`)。
+    /// `with_source_meta` の provider が返す `created_at_ms` を使う。未設定なら no-op。
+    /// 既定 `false`。
+    pub recency_boost: bool,
 }
 
 impl Default for SearchOptions {
@@ -807,6 +827,8 @@ impl Default for SearchOptions {
             auto_heading_rerank: false,
             auto_max_chunks_per_source: false,
             lexical_boost: false,
+            title_boost: false,
+            recency_boost: false,
         }
     }
 }
@@ -914,6 +936,10 @@ pub struct AskOptions {
     /// [`SearchOptions::lexical_boost`] と同じ。chunk 本文のクエリ語 coverage で
     /// `score` を乗算 boost する。既定 `false`。
     pub lexical_boost: bool,
+    /// [`SearchOptions::title_boost`] と同じ (source title 一致 boost)。既定 `false`。
+    pub title_boost: bool,
+    /// [`SearchOptions::recency_boost`] と同じ (取り込みの新しさ boost)。既定 `false`。
+    pub recency_boost: bool,
 }
 
 impl Default for AskOptions {
@@ -940,6 +966,8 @@ impl Default for AskOptions {
             auto_max_chunks_per_source: false,
             no_citation_retry: false,
             lexical_boost: false,
+            title_boost: false,
+            recency_boost: false,
         }
     }
 }
@@ -1046,6 +1074,7 @@ pub struct Ellisii {
     index_cache: Option<Arc<dyn IndexCache>>,
     query_rewriter: Option<Arc<dyn QueryRewriter>>,
     compressor: Option<Arc<dyn ContextCompressor>>,
+    source_meta: Option<Arc<dyn ellisii_core::SourceMetaProvider>>,
     ingestor: Ingestor<DynEmbedder, DynStore>,
     notebook_id: Uuid,
     /// caption rerank 用の lazy cache。ingest 後に invalidate される。
@@ -1361,6 +1390,22 @@ impl Ellisii {
             // chunk 本文のクエリ語 coverage で乗算 boost (alpha=0.5 = 最大 +50%)。
             // caption / heading が「見出し」を見るのに対し本文を見るので直交する。
             ellisii_rag::rerank::lexical_boost_in_place(query, &mut fused, 0.5);
+        }
+        if (opts.title_boost || opts.recency_boost) && self.source_meta.is_some() {
+            // source メタ (title / created_at) で boost。provider 未設定なら上の
+            // is_some() で skip 済み。now_ms は呼び出しごとに現在時刻を取る。
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            ellisii_rag::rerank::source_meta_boost_in_place(
+                query,
+                &mut fused,
+                self.source_meta.as_deref().unwrap(),
+                now_ms,
+                opts.title_boost,
+                opts.recency_boost,
+            );
         }
         // Run 16 で観測した non-composition 退行 (rewriter + CE で nDCG -0.016) を防ぐため、
         // rewriter が実際に variant を生成したクエリでは CE を自動 skip する。
@@ -2172,6 +2217,20 @@ impl Ellisii {
                 }
                 if opts.lexical_boost {
                     ellisii_rag::rerank::lexical_boost_in_place(query, &mut fused, 0.5);
+                }
+                if (opts.title_boost || opts.recency_boost) && self.source_meta.is_some() {
+                    let now_ms = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as i64)
+                        .unwrap_or(0);
+                    ellisii_rag::rerank::source_meta_boost_in_place(
+                        query,
+                        &mut fused,
+                        self.source_meta.as_deref().unwrap(),
+                        now_ms,
+                        opts.title_boost,
+                        opts.recency_boost,
+                    );
                 }
                 // Run 16 で観測した non-composition 退行 (rewriter + CE で nDCG -0.016) を防ぐ。
                 let ce_should_run = opts.ce_rerank_top_n > 0

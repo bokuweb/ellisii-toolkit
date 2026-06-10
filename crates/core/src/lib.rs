@@ -169,6 +169,25 @@ pub fn is_retrieval_noise(text: &str) -> bool {
     false
 }
 
+/// 検索の score boost で参照する source (取り込み元 doc) のメタデータ。
+///
+/// title / created_at は SDK の store が持たない「アプリ層の情報」なので、
+/// [`SourceMetaProvider`] を通じて呼び出し側 (notebook 管理 DB 等) から供給する。
+#[derive(Debug, Clone)]
+pub struct SourceMeta {
+    /// source のタイトル / ファイル名 (title-match boost 用)。
+    pub title: String,
+    /// 取り込み日時 (Unix epoch ミリ秒)。`<= 0` は不明として recency boost を skip。
+    pub created_at_ms: i64,
+}
+
+/// `source_id` → [`SourceMeta`] を引くフック。検索結果の score boost
+/// (title-match / recency) のために、SDK の store が持たない source メタを
+/// 呼び出し側から供給する。`None` を返した source には boost を適用しない。
+pub trait SourceMetaProvider: Send + Sync {
+    fn source_meta(&self, source_id: Uuid) -> Option<SourceMeta>;
+}
+
 /// ingest pipeline で各 chunk を任意のロジックで enrich するためのフック。
 ///
 /// 実装側 (例: `ellisii_jp_law_thesaurus::LawThesaurus`) は法律ターム → シナリオ
