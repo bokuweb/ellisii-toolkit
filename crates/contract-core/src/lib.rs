@@ -15,6 +15,9 @@ pub enum ContractError {
     /// A required field was empty.
     #[error("{field} must not be empty")]
     Empty { field: &'static str },
+    /// A collection that must contain at least one item was empty.
+    #[error("{field} must contain at least one item")]
+    EmptyCollection { field: &'static str },
 }
 
 /// Severity assigned to a contract risk finding.
@@ -37,7 +40,7 @@ pub enum RiskSeverity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RiskAnalysisRequest {
     document_ref: String,
-    text: String,
+    slices: Vec<DocumentSlice>,
 }
 
 impl RiskAnalysisRequest {
@@ -51,8 +54,37 @@ impl RiskAnalysisRequest {
         let document_ref = document_ref.into();
         let text = text.into();
         ensure_not_empty(&document_ref, "document_ref")?;
-        ensure_not_empty(&text, "text")?;
-        Ok(Self { document_ref, text })
+        Ok(Self {
+            slices: vec![DocumentSlice::new(document_ref.clone(), text)?],
+            document_ref,
+        })
+    }
+
+    /// Creates a risk analysis request from externally prepared document slices.
+    ///
+    /// This is the preferred entry point when another component, such as an
+    /// editor document pipeline, PDF parser, OCR layer, or chunker, already
+    /// owns document segmentation. The contract core consumes validated slices
+    /// without reimplementing chunking.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when `document_ref` is empty, or
+    /// [`ContractError::EmptyCollection`] when no slices are supplied.
+    pub fn from_slices<I>(document_ref: impl Into<String>, slices: I) -> Result<Self>
+    where
+        I: IntoIterator<Item = DocumentSlice>,
+    {
+        let document_ref = document_ref.into();
+        ensure_not_empty(&document_ref, "document_ref")?;
+        let slices = slices.into_iter().collect::<Vec<_>>();
+        if slices.is_empty() {
+            return Err(ContractError::EmptyCollection { field: "slices" });
+        }
+        Ok(Self {
+            document_ref,
+            slices,
+        })
     }
 
     /// Returns the opaque source document reference.
@@ -61,10 +93,65 @@ impl RiskAnalysisRequest {
         &self.document_ref
     }
 
-    /// Returns the contract text to analyze.
+    /// Returns the first contract text slice.
     ///
-    /// Callers must treat this as confidential document material and must not
-    /// put it in telemetry attributes or events.
+    /// This convenience accessor supports single-slice callers. New code that
+    /// integrates with external chunkers should prefer [`Self::slices`].
+    /// Returned text can contain confidential document material and must not be
+    /// put in telemetry attributes or events.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        self.slices
+            .first()
+            .map(DocumentSlice::text)
+            .unwrap_or_default()
+    }
+
+    /// Returns externally prepared document slices in analysis order.
+    ///
+    /// Slice text can contain confidential document material and must not be
+    /// put in telemetry attributes or events.
+    #[must_use]
+    pub fn slices(&self) -> &[DocumentSlice] {
+        &self.slices
+    }
+}
+
+/// A source-addressed slice of contract text.
+///
+/// Chunking, OCR, and PDF parsing are intentionally outside this crate. This
+/// value lets callers pass already prepared text spans while preserving the
+/// source reference that should be shown with findings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocumentSlice {
+    source_ref: String,
+    text: String,
+}
+
+impl DocumentSlice {
+    /// Creates a validated document slice.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when `source_ref` or `text` is empty.
+    pub fn new(source_ref: impl Into<String>, text: impl Into<String>) -> Result<Self> {
+        let source_ref = source_ref.into();
+        let text = text.into();
+        ensure_not_empty(&source_ref, "source_ref")?;
+        ensure_not_empty(&text, "text")?;
+        Ok(Self { source_ref, text })
+    }
+
+    /// Returns the source reference for this slice.
+    #[must_use]
+    pub fn source_ref(&self) -> &str {
+        &self.source_ref
+    }
+
+    /// Returns the slice text.
+    ///
+    /// This can contain confidential document material and must not be put in
+    /// telemetry attributes or events.
     #[must_use]
     pub fn text(&self) -> &str {
         &self.text
@@ -88,14 +175,16 @@ pub struct HeuristicRiskAnalyzer;
 impl RiskAnalyzer for HeuristicRiskAnalyzer {
     fn analyze(&self, request: &RiskAnalysisRequest) -> Result<RiskReport> {
         let mut findings = Vec::new();
-        let lower = request.text().to_ascii_lowercase();
-        if lower.contains("unlimited liability") {
-            findings.push(RiskFinding::new(
-                RiskSeverity::High,
-                "liability",
-                "The clause mentions unlimited liability, which may create uncapped exposure.",
-                format!("{}#risk:liability", request.document_ref()),
-            )?);
+        for slice in request.slices() {
+            let lower = slice.text().to_ascii_lowercase();
+            if lower.contains("unlimited liability") {
+                findings.push(RiskFinding::new(
+                    RiskSeverity::High,
+                    "liability",
+                    "The clause mentions unlimited liability, which may create uncapped exposure.",
+                    slice.source_ref(),
+                )?);
+            }
         }
         Ok(RiskReport { findings })
     }
