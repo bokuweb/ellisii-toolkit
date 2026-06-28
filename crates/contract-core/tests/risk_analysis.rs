@@ -1,6 +1,7 @@
 use ellisii_contract_core::{
-    DocumentSlice, HeuristicRevisionSuggester, HeuristicRiskAnalyzer, RevisionRequest,
-    RevisionSuggester, RiskAnalysisRequest, RiskAnalyzer, RiskSeverity,
+    DocumentSlice, HeuristicRevisionSuggester, HeuristicRiskAnalyzer, HeuristicTemplateComparer,
+    RevisionRequest, RevisionSuggester, RiskAnalysisRequest, RiskAnalyzer, RiskSeverity,
+    TemplateComparer, TemplateComparisonRequest,
 };
 
 #[test]
@@ -75,4 +76,36 @@ fn heuristic_revision_suggester_rewrites_unlimited_liability_slice() {
     assert_eq!(suggestion.category(), "liability");
     assert!(suggestion.proposed_text().contains("liability is capped"));
     assert!(suggestion.rationale().contains("uncapped exposure"));
+}
+
+#[test]
+fn heuristic_template_comparer_reports_missing_template_clause() {
+    let comparer = HeuristicTemplateComparer;
+    let request = TemplateComparisonRequest::from_slices(
+        "doc-1",
+        "template-standard",
+        [DocumentSlice::new(
+            "doc-1#chunk:0001",
+            "This agreement may terminate for cause.",
+        )
+        .unwrap()],
+        [DocumentSlice::new(
+            "template-standard#chunk:termination",
+            "Either party may terminate for convenience with thirty days notice.",
+        )
+        .unwrap()],
+    )
+    .unwrap();
+
+    let report = comparer.compare(&request).unwrap();
+
+    assert_eq!(report.differences().len(), 1);
+    let difference = &report.differences()[0];
+    assert_eq!(difference.category(), "missing_clause");
+    assert_eq!(difference.source_ref(), "doc-1");
+    assert_eq!(
+        difference.template_ref(),
+        "template-standard#chunk:termination"
+    );
+    assert!(difference.summary().contains("termination for convenience"));
 }

@@ -243,6 +243,212 @@ pub trait RevisionSuggester: Send + Sync {
     fn suggest(&self, request: &RevisionRequest) -> Result<RevisionSuggestions>;
 }
 
+/// Input for reusable contract template comparison.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateComparisonRequest {
+    document_ref: String,
+    template_ref: String,
+    document_slices: Vec<DocumentSlice>,
+    template_slices: Vec<DocumentSlice>,
+}
+
+impl TemplateComparisonRequest {
+    /// Creates a template comparison request from externally prepared slices.
+    ///
+    /// The caller owns document parsing, template loading, OCR, chunking, and
+    /// source mapping. This request only carries validated source-addressed
+    /// slices for legal-domain comparison.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when `document_ref` or `template_ref`
+    /// is empty, or [`ContractError::EmptyCollection`] when either slice
+    /// collection is empty.
+    pub fn from_slices<D, T>(
+        document_ref: impl Into<String>,
+        template_ref: impl Into<String>,
+        document_slices: D,
+        template_slices: T,
+    ) -> Result<Self>
+    where
+        D: IntoIterator<Item = DocumentSlice>,
+        T: IntoIterator<Item = DocumentSlice>,
+    {
+        let document_ref = document_ref.into();
+        let template_ref = template_ref.into();
+        ensure_not_empty(&document_ref, "document_ref")?;
+        ensure_not_empty(&template_ref, "template_ref")?;
+        let document_slices = document_slices.into_iter().collect::<Vec<_>>();
+        if document_slices.is_empty() {
+            return Err(ContractError::EmptyCollection {
+                field: "document_slices",
+            });
+        }
+        let template_slices = template_slices.into_iter().collect::<Vec<_>>();
+        if template_slices.is_empty() {
+            return Err(ContractError::EmptyCollection {
+                field: "template_slices",
+            });
+        }
+        Ok(Self {
+            document_ref,
+            template_ref,
+            document_slices,
+            template_slices,
+        })
+    }
+
+    /// Returns the opaque source document reference.
+    #[must_use]
+    pub fn document_ref(&self) -> &str {
+        &self.document_ref
+    }
+
+    /// Returns the template reference.
+    #[must_use]
+    pub fn template_ref(&self) -> &str {
+        &self.template_ref
+    }
+
+    /// Returns document slices in comparison order.
+    ///
+    /// Slice text can contain confidential document material and must not be
+    /// put in telemetry attributes or events.
+    #[must_use]
+    pub fn document_slices(&self) -> &[DocumentSlice] {
+        &self.document_slices
+    }
+
+    /// Returns template slices in comparison order.
+    ///
+    /// Slice text can contain confidential template material and must not be
+    /// put in telemetry attributes or events.
+    #[must_use]
+    pub fn template_slices(&self) -> &[DocumentSlice] {
+        &self.template_slices
+    }
+}
+
+/// Contract template comparison interface.
+pub trait TemplateComparer: Send + Sync {
+    /// Compares document slices with template slices.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError`] when comparison cannot be completed.
+    fn compare(&self, request: &TemplateComparisonRequest) -> Result<ComparisonReport>;
+}
+
+/// Simple deterministic template comparer used as a baseline and test fixture.
+#[derive(Debug, Clone, Default)]
+pub struct HeuristicTemplateComparer;
+
+impl TemplateComparer for HeuristicTemplateComparer {
+    fn compare(&self, request: &TemplateComparisonRequest) -> Result<ComparisonReport> {
+        let document_text = request
+            .document_slices()
+            .iter()
+            .map(DocumentSlice::text)
+            .collect::<Vec<_>>()
+            .join("\n")
+            .to_ascii_lowercase();
+        let mut differences = Vec::new();
+        for template_slice in request.template_slices() {
+            let template_text = template_slice.text().to_ascii_lowercase();
+            let has_convenience_termination = document_text.contains("termination for convenience")
+                || document_text.contains("terminate for convenience");
+            let template_requires_convenience_termination = template_text
+                .contains("termination for convenience")
+                || template_text.contains("terminate for convenience");
+            if template_requires_convenience_termination && !has_convenience_termination {
+                differences.push(TemplateDifference::new(
+                    "missing_clause",
+                    "Template includes termination for convenience, but the document does not.",
+                    request.document_ref(),
+                    template_slice.source_ref(),
+                )?);
+            }
+        }
+        Ok(ComparisonReport { differences })
+    }
+}
+
+/// Template comparison output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComparisonReport {
+    differences: Vec<TemplateDifference>,
+}
+
+impl ComparisonReport {
+    /// Returns differences in comparer order.
+    #[must_use]
+    pub fn differences(&self) -> &[TemplateDifference] {
+        &self.differences
+    }
+}
+
+/// One difference between a document and a template.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TemplateDifference {
+    category: String,
+    summary: String,
+    source_ref: String,
+    template_ref: String,
+}
+
+impl TemplateDifference {
+    /// Creates a template difference.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when a text field is empty.
+    pub fn new(
+        category: impl Into<String>,
+        summary: impl Into<String>,
+        source_ref: impl Into<String>,
+        template_ref: impl Into<String>,
+    ) -> Result<Self> {
+        let category = category.into();
+        let summary = summary.into();
+        let source_ref = source_ref.into();
+        let template_ref = template_ref.into();
+        ensure_not_empty(&category, "category")?;
+        ensure_not_empty(&summary, "summary")?;
+        ensure_not_empty(&source_ref, "source_ref")?;
+        ensure_not_empty(&template_ref, "template_ref")?;
+        Ok(Self {
+            category,
+            summary,
+            source_ref,
+            template_ref,
+        })
+    }
+
+    /// Returns the difference category.
+    #[must_use]
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+
+    /// Returns a short difference summary.
+    #[must_use]
+    pub fn summary(&self) -> &str {
+        &self.summary
+    }
+
+    /// Returns the source document reference.
+    #[must_use]
+    pub fn source_ref(&self) -> &str {
+        &self.source_ref
+    }
+
+    /// Returns the template source reference.
+    #[must_use]
+    pub fn template_ref(&self) -> &str {
+        &self.template_ref
+    }
+}
+
 /// Simple deterministic revision suggester used as a baseline and test fixture.
 #[derive(Debug, Clone, Default)]
 pub struct HeuristicRevisionSuggester;
