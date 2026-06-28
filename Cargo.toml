@@ -13,6 +13,7 @@ members = [
     "crates/parser-audio",
     "crates/ocr",
     "crates/chunker",
+    "crates/contract-core",
     "crates/embed-core",
     "crates/embed-dummy",
     "crates/embed-static-jp",
@@ -76,6 +77,7 @@ ellisii-parser-pptx = { path = "crates/parser-pptx" }
 ellisii-parser-audio = { path = "crates/parser-audio" }
 ellisii-ocr = { path = "crates/ocr" }
 ellisii-chunker = { path = "crates/chunker" }
+ellisii-contract-core = { path = "crates/contract-core" }
 ellisii-embed-core = { path = "crates/embed-core" }
 ellisii-embed-dummy = { path = "crates/embed-dummy" }
 ellisii-embed-static-jp = { path = "crates/embed-static-jp" }

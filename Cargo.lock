@@ -1109,6 +1109,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ellisii-contract-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "ellisii-core"
 version = "0.1.0"
 dependencies = [
