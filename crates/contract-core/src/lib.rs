@@ -168,6 +168,184 @@ pub trait RiskAnalyzer: Send + Sync {
     fn analyze(&self, request: &RiskAnalysisRequest) -> Result<RiskReport>;
 }
 
+/// Input for reusable contract revision suggestion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RevisionRequest {
+    document_ref: String,
+    category: String,
+    slices: Vec<DocumentSlice>,
+}
+
+impl RevisionRequest {
+    /// Creates a revision request from externally prepared document slices.
+    ///
+    /// The caller owns parsing, OCR, chunking, and editor selection. This
+    /// request carries only validated legal-analysis inputs and their source
+    /// references.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when `document_ref` or `category` is
+    /// empty, or [`ContractError::EmptyCollection`] when no slices are
+    /// supplied.
+    pub fn from_slices<I>(
+        document_ref: impl Into<String>,
+        category: impl Into<String>,
+        slices: I,
+    ) -> Result<Self>
+    where
+        I: IntoIterator<Item = DocumentSlice>,
+    {
+        let document_ref = document_ref.into();
+        let category = category.into();
+        ensure_not_empty(&document_ref, "document_ref")?;
+        ensure_not_empty(&category, "category")?;
+        let slices = slices.into_iter().collect::<Vec<_>>();
+        if slices.is_empty() {
+            return Err(ContractError::EmptyCollection { field: "slices" });
+        }
+        Ok(Self {
+            document_ref,
+            category,
+            slices,
+        })
+    }
+
+    /// Returns the opaque source document reference.
+    #[must_use]
+    pub fn document_ref(&self) -> &str {
+        &self.document_ref
+    }
+
+    /// Returns the requested revision category.
+    #[must_use]
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+
+    /// Returns externally prepared document slices in suggestion order.
+    ///
+    /// Slice text can contain confidential document material and must not be
+    /// put in telemetry attributes or events.
+    #[must_use]
+    pub fn slices(&self) -> &[DocumentSlice] {
+        &self.slices
+    }
+}
+
+/// Contract revision suggestion interface.
+pub trait RevisionSuggester: Send + Sync {
+    /// Suggests revisions for the requested document slices.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError`] when suggestion cannot be completed.
+    fn suggest(&self, request: &RevisionRequest) -> Result<RevisionSuggestions>;
+}
+
+/// Simple deterministic revision suggester used as a baseline and test fixture.
+#[derive(Debug, Clone, Default)]
+pub struct HeuristicRevisionSuggester;
+
+impl RevisionSuggester for HeuristicRevisionSuggester {
+    fn suggest(&self, request: &RevisionRequest) -> Result<RevisionSuggestions> {
+        let mut suggestions = Vec::new();
+        if request.category() == "liability" {
+            for slice in request.slices() {
+                let lower = slice.text().to_ascii_lowercase();
+                if lower.contains("unlimited liability") {
+                    suggestions.push(RevisionSuggestion::new(
+                        "liability",
+                        "Supplier's liability is capped at the fees paid under this agreement.",
+                        "Replacing unlimited liability with a cap reduces uncapped exposure.",
+                        slice.source_ref(),
+                    )?);
+                }
+            }
+        }
+        Ok(RevisionSuggestions { suggestions })
+    }
+}
+
+/// Revision suggestion output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RevisionSuggestions {
+    suggestions: Vec<RevisionSuggestion>,
+}
+
+impl RevisionSuggestions {
+    /// Returns suggestions in suggester order.
+    #[must_use]
+    pub fn suggestions(&self) -> &[RevisionSuggestion] {
+        &self.suggestions
+    }
+}
+
+/// One contract revision suggestion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RevisionSuggestion {
+    category: String,
+    proposed_text: String,
+    rationale: String,
+    source_ref: String,
+}
+
+impl RevisionSuggestion {
+    /// Creates a revision suggestion.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContractError::Empty`] when a text field is empty.
+    pub fn new(
+        category: impl Into<String>,
+        proposed_text: impl Into<String>,
+        rationale: impl Into<String>,
+        source_ref: impl Into<String>,
+    ) -> Result<Self> {
+        let category = category.into();
+        let proposed_text = proposed_text.into();
+        let rationale = rationale.into();
+        let source_ref = source_ref.into();
+        ensure_not_empty(&category, "category")?;
+        ensure_not_empty(&proposed_text, "proposed_text")?;
+        ensure_not_empty(&rationale, "rationale")?;
+        ensure_not_empty(&source_ref, "source_ref")?;
+        Ok(Self {
+            category,
+            proposed_text,
+            rationale,
+            source_ref,
+        })
+    }
+
+    /// Returns the suggestion category.
+    #[must_use]
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+
+    /// Returns the proposed replacement text.
+    ///
+    /// This can contain generated legal text and must not be put in telemetry
+    /// attributes or events.
+    #[must_use]
+    pub fn proposed_text(&self) -> &str {
+        &self.proposed_text
+    }
+
+    /// Returns the suggestion rationale.
+    #[must_use]
+    pub fn rationale(&self) -> &str {
+        &self.rationale
+    }
+
+    /// Returns the source reference for this suggestion.
+    #[must_use]
+    pub fn source_ref(&self) -> &str {
+        &self.source_ref
+    }
+}
+
 /// Simple deterministic risk analyzer used as a baseline and test fixture.
 #[derive(Debug, Clone, Default)]
 pub struct HeuristicRiskAnalyzer;

@@ -1,5 +1,6 @@
 use ellisii_contract_core::{
-    DocumentSlice, HeuristicRiskAnalyzer, RiskAnalysisRequest, RiskAnalyzer, RiskSeverity,
+    DocumentSlice, HeuristicRevisionSuggester, HeuristicRiskAnalyzer, RevisionRequest,
+    RevisionSuggester, RiskAnalysisRequest, RiskAnalyzer, RiskSeverity,
 };
 
 #[test]
@@ -50,4 +51,28 @@ fn heuristic_risk_analyzer_preserves_external_slice_source_refs() {
 
     assert_eq!(report.findings().len(), 1);
     assert_eq!(report.findings()[0].source_ref(), "doc-1#chunk:0002");
+}
+
+#[test]
+fn heuristic_revision_suggester_rewrites_unlimited_liability_slice() {
+    let suggester = HeuristicRevisionSuggester;
+    let request = RevisionRequest::from_slices(
+        "doc-1",
+        "liability",
+        [DocumentSlice::new(
+            "doc-1#chunk:0002",
+            "Supplier has unlimited liability for indirect damages.",
+        )
+        .unwrap()],
+    )
+    .unwrap();
+
+    let suggestions = suggester.suggest(&request).unwrap();
+
+    assert_eq!(suggestions.suggestions().len(), 1);
+    let suggestion = &suggestions.suggestions()[0];
+    assert_eq!(suggestion.source_ref(), "doc-1#chunk:0002");
+    assert_eq!(suggestion.category(), "liability");
+    assert!(suggestion.proposed_text().contains("liability is capped"));
+    assert!(suggestion.rationale().contains("uncapped exposure"));
 }
