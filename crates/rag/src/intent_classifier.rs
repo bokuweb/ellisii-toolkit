@@ -55,6 +55,8 @@ impl Intent {
 
 /// クエリ → Intent への分類器。
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait IntentClassifier: Send + Sync {
     async fn classify(&self, query: &str) -> Result<Intent>;
 }

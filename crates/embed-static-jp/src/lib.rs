@@ -119,8 +119,8 @@ fn load_embedding_table(path: &Path) -> Result<EmbeddingTable> {
         )));
     }
     let mut data = vec![0_f32; vocab * dim];
-    for (i, chunk) in bytes.chunks_exact(4).enumerate() {
-        data[i] = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+    for (i, chunk) in bytes.as_chunks::<4>().0.iter().enumerate() {
+        data[i] = f32::from_le_bytes(*chunk);
     }
     Ok(EmbeddingTable { data, vocab, dim })
 }

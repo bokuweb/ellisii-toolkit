@@ -7,4 +7,4 @@ license.workspace = true
 [dependencies]
 ellisii-core.workspace = true
 ellisii-parsers-core.workspace = true
-calamine = "0.30"
+calamine = "0.37"

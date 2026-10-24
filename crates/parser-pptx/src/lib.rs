@@ -10,8 +10,12 @@ use std::io::Read;
 pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
     let f = std::fs::File::open(path).map_err(Error::Io)?;
     let mut zip = zip::ZipArchive::new(f).map_err(|e| Error::Parse(format!("zip: {e}")))?;
-    let mut slide_files: Vec<String> = (0..zip.len())
-        .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
+    let mut slide_files: Vec<String> = zip
+        .file_names()
+        .map(|name| name.map(|name| name.into_owned()))
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|_| Error::Parse("invalid PPTX ZIP entry name".into()))?
+        .into_iter()
         .filter(|n| n.starts_with("ppt/slides/slide") && n.ends_with(".xml"))
         .collect();
     slide_files.sort_by_key(|n| extract_slide_number(n).unwrap_or(u32::MAX));
@@ -76,8 +80,12 @@ pub fn parse(path: &str) -> Result<Vec<ParsedBlock>> {
 pub fn slide_texts(bytes: &[u8]) -> Result<Vec<String>> {
     let cursor = std::io::Cursor::new(bytes);
     let mut zip = zip::ZipArchive::new(cursor).map_err(|e| Error::Parse(format!("zip: {e}")))?;
-    let mut slide_files: Vec<String> = (0..zip.len())
-        .filter_map(|i| zip.by_index(i).ok().map(|f| f.name().to_string()))
+    let mut slide_files: Vec<String> = zip
+        .file_names()
+        .map(|name| name.map(|name| name.into_owned()))
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|_| Error::Parse("invalid PPTX ZIP entry name".into()))?
+        .into_iter()
         .filter(|n| n.starts_with("ppt/slides/slide") && n.ends_with(".xml"))
         .collect();
     slide_files.sort_by_key(|n| extract_slide_number(n).unwrap_or(u32::MAX));
@@ -138,7 +146,8 @@ pub fn extract_notes_body(xml: &str) -> String {
     use quick_xml::reader::Reader;
 
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // entity 前後の空白も本文なので、分割された Text ごとには除去しない。
+    reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
     let mut in_t = false;
     // shape stack: 各 `<p:sp>` 開始でスライド番号 placeholder かどうかを push
@@ -236,7 +245,8 @@ pub fn extract_a_t(xml: &str) -> String {
     use quick_xml::reader::Reader;
 
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // entity 前後の空白も本文なので、分割された Text ごとには除去しない。
+    reader.config_mut().trim_text(false);
     let mut buf = Vec::new();
     let mut in_t = false;
     let mut out = String::new();
@@ -288,7 +298,25 @@ fn decode_entity(name: &str) -> Option<char> {
 
 #[cfg(test)]
 mod tests {
-    use super::extract_a_t;
+    use super::{extract_a_t, slide_texts};
+
+    #[test]
+    fn slide_texts_reads_zip9_entries_in_slide_order() {
+        use std::io::Write;
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, text) in [
+            ("ppt/slides/slide10.xml", "資料 &amp; ten"),
+            ("ppt/slides/slide2.xml", "two"),
+        ] {
+            writer
+                .start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            write!(writer, "<a:p><a:t>{text}</a:t></a:p>").unwrap();
+        }
+        let bytes = writer.finish().unwrap().into_inner();
+        assert_eq!(slide_texts(&bytes).unwrap(), vec!["two", "資料 & ten"]);
+        assert!(slide_texts(b"not a ZIP archive").is_err());
+    }
 
     #[test]
     fn collects_a_t_in_order() {
@@ -316,6 +344,13 @@ mod tests {
     fn empty_xml_yields_empty_string() {
         assert_eq!(extract_a_t(""), "");
         assert_eq!(extract_a_t("<p:sld/>"), "");
+    }
+
+    #[test]
+    fn preserves_spaces_around_entities_in_text_and_notes() {
+        let xml = "<a:p><a:t>A &amp; B</a:t></a:p>";
+        assert_eq!(extract_a_t(xml), "A & B");
+        assert_eq!(extract_notes_body(xml), "A & B");
     }
 
     #[test]

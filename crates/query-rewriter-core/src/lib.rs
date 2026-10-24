@@ -44,6 +44,8 @@ impl RewrittenQueries {
 }
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait QueryRewriter: Send + Sync {
     /// 元クエリを受け取り、書き換え結果を返す。
     ///

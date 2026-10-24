@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use ellisii_core::Result;
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait Embedder: Send + Sync {
     fn dim(&self) -> usize;
     async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>>;

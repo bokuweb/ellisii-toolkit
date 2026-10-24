@@ -62,8 +62,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 encoding_rs = "0.8"
-quick-xml = "0.39"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = "0.41"
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 ellisii-core = { path = "crates/core" }
 ellisii-parsers-core = { path = "crates/parsers-core" }
