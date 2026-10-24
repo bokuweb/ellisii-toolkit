@@ -78,6 +78,8 @@ pub fn pick_representatives(chunks: &[Chunk], per_source: usize) -> Vec<Chunk> {
 pub type Scope = Option<Uuid>;
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait VectorStore: Send + Sync {
     /// `notebook_id` を各 chunk に紐付けて保存する。
     async fn upsert(

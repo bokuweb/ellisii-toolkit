@@ -36,6 +36,8 @@ pub struct FaithfulnessScore {
 }
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait AnswerJudge: Send + Sync {
     async fn judge_faithfulness(&self, input: &JudgeInput<'_>) -> Result<FaithfulnessScore>;
 }

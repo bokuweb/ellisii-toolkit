@@ -35,6 +35,8 @@ impl std::fmt::Debug for RasterizedPage {
 /// テキストレイヤなしの PDF (またはスキャン混在 PDF の画像ページだけ) を
 /// OCR にかけるための前処理に使う。
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait PdfRasterizer: Send + Sync {
     /// PDF の総ページ数。スキャン混在 PDF で「テキスト無しページ」を
     /// 算出するために使うので、`rasterize_pages` を呼ぶ前に軽く取れること。
@@ -86,6 +88,8 @@ pub struct OcrConfig {
 /// OCR バックエンドの抽象。`onnx` feature 有効時に ndlocr 実装が、
 /// 無効時はダミーが選ばれる。
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait OcrBackend: Send + Sync {
     async fn ocr_image(&self, path: &str) -> Result<Vec<OcrBlock>>;
 

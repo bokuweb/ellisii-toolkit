@@ -37,6 +37,8 @@ impl CompressedContext {
 }
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait ContextCompressor: Send + Sync {
     /// 圧縮機が実体を持つかどうか (UI 表示用)
     fn is_active(&self) -> bool;

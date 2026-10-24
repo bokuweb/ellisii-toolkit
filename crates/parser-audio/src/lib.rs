@@ -81,6 +81,8 @@ impl Transcript {
 }
 
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait Transcriber: Send + Sync {
     /// wav (16-bit PCM) ファイルを文字起こしする。`lang_hint` は `"ja"` などで
     /// 言語固定 (None なら auto detect)。

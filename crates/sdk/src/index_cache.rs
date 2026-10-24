@@ -32,6 +32,8 @@ pub struct IndexEntry {
 
 /// 冪等 ingest 用キャッシュ。`get` でルックアップ、`put` で保存、`forget` で削除。
 #[async_trait]
+// async-trait が生成する must_use は Future と重複するため、この生成コードだけ除外する。
+#[allow(clippy::double_must_use)]
 pub trait IndexCache: Send + Sync {
     async fn get(&self, path: &str) -> Result<Option<IndexEntry>>;
     async fn put(&self, path: &str, entry: IndexEntry) -> Result<()>;
