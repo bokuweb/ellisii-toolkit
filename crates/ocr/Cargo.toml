@@ -17,7 +17,7 @@ tracing.workspace = true
 # 0.0.8 で Session intra_threads の auto-tune (pool * intra ≒ logical cores)。
 # 0.0.7 で英文行末ハイフネーション結合 (`join_latin_hyphenated_lines`)。
 # 0.0.4 で `DeimPool` / CoreML EP (parseq/DEIM 非対応で実質 CPU fallback)。
-ndlocr-lite-rs = { git = "https://github.com/bokuweb/ndlocr-lite-rs", tag = "0.0.12", optional = true }
+ndlocr-lite-rs = { git = "https://github.com/bokuweb/ndlocr-lite-rs", rev = "c6bea36e114b0afeb68ee16f7ded80e691e0fa70", optional = true }
 
 [features]
 default = []

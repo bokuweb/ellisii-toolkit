@@ -25,7 +25,7 @@ tempfile = "3"
 pdfium-render = { version = "0.8", default-features = false, features = ["thread_safe", "pdfium_latest", "image_latest"] }
 pdfium-auto = "0.3"
 # フォールバック: pdfium が利用不可のとき (ネット不通・ダウンロード失敗) は pdf-extract に落ちる
-pdf-extract = "0.9"
+pdf-extract = "0.12"
 # `image::ImageBuffer::save(*.png)` のために PNG エンコーダを明示的に有効化
 # しておく。pdfium-render が pull する image は default features 無しなので、
 # このディレクトリだけで PNG を書き出すパス (ingest 本流 + bench example) で
