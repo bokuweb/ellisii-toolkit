@@ -62,7 +62,9 @@ automatically.
 
 The bindings are pinned to a small fork updating bundled llama.cpp to
 **b11960 / v0.8.0**, the minimum required by the official model card.
-Gemma and Qwen use the same updated runtime.
+Gemma and Qwen use the same updated runtime. Gemma4 E2B/E4B use the
+canonical `<|turn>` / `<turn|>` template with a dedicated system turn
+(thinking disabled), rather than Gemma3 turn markers.
 
 For repeatable JSONL inference with native token/timing events:
 

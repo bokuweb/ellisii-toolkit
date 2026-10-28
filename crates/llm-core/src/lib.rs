@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum ModelFamily {
-    /// Google Gemma 4 (`<start_of_turn>` 形式 — Gemma 3 と互換)
+    /// Google Gemma 4 (`<|turn>` / `<turn|>` 形式)
     Gemma4,
     /// ChatML (`<|im_start|>`) 系。Qwen 2.5 / Qwen 3 共通
     Qwen,
@@ -66,7 +66,7 @@ pub fn default_catalog() -> Vec<ModelSpec> {
         // 含めると 24GB+ メモリが現実的ライン。
         //
         // Gemma 4 26B-A4B: MoE 構造で active 4B。dense 31B より per-token
-        // decode が速く Apple Silicon に向く。chat テンプレは <start_of_turn>。
+        // decode が速く Apple Silicon に向く。chat テンプレは <|turn>。
         // Qwen 3.6 27B: dense 27B。日本語含む多言語推論で安定。
         ModelSpec {
             family: ModelFamily::Gemma4,
