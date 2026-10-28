@@ -54,7 +54,13 @@ let builder = ellisii_sdk::Ellisii::builder()
     .with_llm_llamacpp("/models/LFM3-1.7B-Q4_K_M.gguf", ModelFamily::Lfm3)?;
 ```
 
-The ChatML template disables thinking. LFM3's recurrent state is cleared
+The ChatML template disables thinking by default for short direct answers.
+The official model defaults to thinking; set `ELLISII_LFM3_THINKING=1` or
+`LlamaConfig.enable_thinking = true` to enable it. Reasoning is streamed
+verbatim through `</think>` and shares the request's `max_tokens` budget;
+allow a larger budget (for example 1024 or more). Non-thinking behavior can
+be inconsistent, so compare quality with the mode your application uses.
+LFM3's recurrent state is cleared
 between requests; prompt prefix reuse and disk snapshots are disabled for
 this family. Full conversation history is still supported. Context size
 keeps the existing memory-based defaults; 256K context is not allocated

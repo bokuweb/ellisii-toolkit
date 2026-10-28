@@ -10,6 +10,9 @@ use ellisii_llm_core::{LlmBackend, LlmRequest, ModelFamily};
 pub struct LlamaConfig {
     pub model_path: std::path::PathBuf,
     pub family: ModelFamily,
+    /// LFM3 reasoning traces. Defaults to false; ELLISII_LFM3_THINKING=1 enables them.
+    /// Traces are streamed verbatim and share the request max_tokens budget.
+    pub enable_thinking: bool,
     pub n_ctx: u32,
     pub n_batch: u32,
     pub n_gpu_layers: i32,
@@ -230,6 +233,7 @@ impl LlamaConfig {
         Self {
             model_path,
             family,
+            enable_thinking: std::env::var("ELLISII_LFM3_THINKING").as_deref() == Ok("1"),
             n_ctx,
             n_batch,
             n_gpu_layers,
@@ -620,6 +624,7 @@ mod imp {
         backend: &'static LlamaBackend,
         model: Arc<ModelOwner>,
         family: ModelFamily,
+        enable_thinking: bool,
         n_ctx: u32,
         n_batch: u32,
         kv_type_hint: String,
@@ -692,6 +697,7 @@ mod imp {
                 backend,
                 model,
                 family: cfg.family,
+                enable_thinking: cfg.enable_thinking,
                 n_ctx: cfg.n_ctx,
                 n_batch: cfg.n_batch,
                 kv_type_hint: cfg.kv_type_hint.clone(),
@@ -713,6 +719,7 @@ mod imp {
             let backend = self.backend;
             let model_owner = self.model.clone();
             let family = self.family;
+            let enable_thinking = self.enable_thinking;
             let n_ctx = self.n_ctx;
             let n_batch = self.n_batch;
             let kv_type_hint = self.kv_type_hint.clone();
@@ -724,7 +731,11 @@ mod imp {
             let cb = std::sync::Arc::new(std::sync::Mutex::new(on_token));
             tokio::task::spawn_blocking(move || -> Result<()> {
                 let model = model_owner.0;
-                let prompt = ellisii_llm_prompt::format(family, &req);
+                let prompt = if family == ModelFamily::Lfm3 {
+                    ellisii_llm_prompt::format_lfm3_with_thinking(&req, enable_thinking)
+                } else {
+                    ellisii_llm_prompt::format(family, &req)
+                };
                 // n_batch を超えるプロンプトは後段で分割 decode する。
                 // Metal の unified memory が小さい環境で OOM を防ぐため小さめの既定値。
                 let n_batch_eff = n_batch.max(64);
@@ -1282,6 +1293,7 @@ mod tests {
         LlamaConfig {
             model_path: std::path::PathBuf::from(model_path),
             family,
+            enable_thinking: false,
             n_ctx: 4096,
             n_batch: 512,
             n_gpu_layers: 0,

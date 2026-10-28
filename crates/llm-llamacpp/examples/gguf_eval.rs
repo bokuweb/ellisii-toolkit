@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let family: ModelFamily = serde_json::from_value(serde_json::Value::String(args[2].clone()))?;
     let cfg = LlamaConfig::new(&args[1], family);
+    let enable_thinking = family == ModelFamily::Lfm3 && cfg.enable_thinking;
     let backend = LlamaCppBackend::load(cfg)?;
     for line in std::io::BufReader::new(std::fs::File::open(&args[3])?).lines() {
         let input: Input = serde_json::from_str(&line?)?;
@@ -50,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "{}",
             serde_json::json!({
                 "id": input.id, "request": input.request, "response": result.0,
+                "enable_thinking": enable_thinking,
                 "elapsed_ms": started.elapsed().as_secs_f64() * 1000.0,
                 "first_chunk_ms": result.1,
             })

@@ -81,6 +81,12 @@ fn format_qwen(req: &LlmRequest) -> FormattedPrompt {
 // Mirrors LiquidAI/LFM3-1.7B chat_template.jinja with enable_thinking=false.
 // BOS is added by the inference backend, rather than embedded in this string.
 fn format_lfm3(req: &LlmRequest) -> FormattedPrompt {
+    format_lfm3_with_thinking(req, false)
+}
+
+/// LFM3 text template with an explicit reasoning mode.
+/// Generated reasoning is included in the stream and counts toward max_tokens.
+pub fn format_lfm3_with_thinking(req: &LlmRequest, enable_thinking: bool) -> FormattedPrompt {
     let mut history = req.history.clone();
     for turn in &mut history {
         if turn.role == ChatRole::Assistant {
@@ -95,7 +101,11 @@ fn format_lfm3(req: &LlmRequest) -> FormattedPrompt {
         history,
         ..req.clone()
     });
-    prompt.text.push_str("<think></think>");
+    prompt.text.push_str(if enable_thinking {
+        "<think>"
+    } else {
+        "<think></think>"
+    });
     prompt
 }
 
@@ -195,6 +205,16 @@ mod tests {
         let p = format(ModelFamily::Qwen, &req("   ", "hi"));
         assert!(!p.text.contains("<|im_start|>system"));
     }
+    #[test]
+    fn lfm3_thinking_uses_canonical_open_reasoning_prefix() {
+        let p = format_lfm3_with_thinking(&req("", "hello"), true);
+        assert_eq!(
+            p.text,
+            "<|im_start|>user\nhello<|im_end|>\n<|im_start|>assistant\n<think>"
+        );
+        assert_eq!(p.stop_sequences, vec!["<|im_end|>", "<|endoftext|>"]);
+    }
+
     #[test]
     fn lfm3_disables_thinking_and_strips_previous_reasoning() {
         let p = format(
