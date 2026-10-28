@@ -27,6 +27,9 @@ use ellisii_llm_core::{LlmBackend, LlmRequest, ModelFamily};
 use ellisii_llm_llamacpp::{LlamaConfig, LlamaCppBackend};
 
 fn locate_e4b() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("ELLISII_GEMMA_TEST_MODEL") {
+        return Some(PathBuf::from(path));
+    }
     let p = std::env::var_os("HOME")
         .map(PathBuf::from)?
         .join("Library/Application Support/ellisii/models/gemma-4-E4B-it-IQ4_XS.gguf");
@@ -110,4 +113,66 @@ async fn independent_prompts_do_not_collide_in_kv_cache() {
         "3rd call (totally different system) failed: {:?}",
         r3.err()
     );
+}
+
+/// Run with ELLISII_LFM3_TEST_MODEL pointing to the official GGUF.
+#[tokio::test(flavor = "current_thread")]
+#[ignore = "requires an LFM3 GGUF"]
+async fn lfm3_repeated_and_multiturn_prompts_reset_recurrent_state() {
+    use ellisii_llm_core::{ChatRole, ChatTurn};
+    let path = std::env::var_os("ELLISII_LFM3_TEST_MODEL")
+        .expect("set ELLISII_LFM3_TEST_MODEL to an LFM3 GGUF");
+    let backend = LlamaCppBackend::load(LlamaConfig::new(PathBuf::from(path), ModelFamily::Lfm3))
+        .expect("load LFM3");
+    let first = collect(
+        &backend,
+        "日本語で短く答えてください。",
+        "日本の首都はどこですか？",
+    )
+    .await
+    .unwrap();
+    let second = collect(
+        &backend,
+        "日本語で短く答えてください。",
+        "日本の首都はどこですか？",
+    )
+    .await
+    .unwrap();
+    assert!(!first.trim().is_empty());
+    assert_eq!(
+        first, second,
+        "identical prompts must reset recurrent state"
+    );
+    assert!(
+        !first.contains('\u{fffd}'),
+        "UTF-8 must survive token boundaries"
+    );
+    let output = Arc::new(Mutex::new(String::new()));
+    let captured = output.clone();
+    backend
+        .generate_stream(
+            LlmRequest {
+                system: "日本語で短く答えてください。".into(),
+                history: vec![
+                    ChatTurn {
+                        role: ChatRole::User,
+                        content: "日本の首都はどこですか？".into(),
+                    },
+                    ChatTurn {
+                        role: ChatRole::Assistant,
+                        content: first,
+                    },
+                ],
+                user: "その都市がある国は？".into(),
+                max_tokens: 32,
+                temperature: 0.0,
+            },
+            Box::new(move |s| captured.lock().unwrap().push_str(&s)),
+        )
+        .await
+        .unwrap();
+    let output = output.lock().unwrap();
+    assert!(!output.trim().is_empty());
+    assert!(!output.contains("<|im_end|>"));
+    eprintln!("LFM3 multi-turn: {output}");
 }

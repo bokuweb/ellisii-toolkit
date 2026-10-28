@@ -9,6 +9,8 @@ pub enum ModelFamily {
     Gemma4,
     /// ChatML (`<|im_start|>`) 系。Qwen 2.5 / Qwen 3 共通
     Qwen,
+    /// Liquid LFM3 (ChatML + non-thinking assistant prefix).
+    Lfm3,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,7 +27,7 @@ pub struct ModelSpec {
 }
 
 pub fn default_catalog() -> Vec<ModelSpec> {
-    // すべて IQ4_XS で統一。Q4_K_M とほぼ同等品質のまま:
+    // Gemma / Qwen は IQ4_XS で統一。Q4_K_M とほぼ同等品質のまま:
     //   - サイズ ~40% 小さい (例: E2B 2.96GB → 1.69GB)
     //   - Apple Silicon Metal で per-token 生成が 1.2-1.3× 速い
     //   - Q3 系より精度劣化が小さく、KV cache の余裕を取りやすい
@@ -49,6 +51,15 @@ pub fn default_catalog() -> Vec<ModelSpec> {
             size_mb: 2715,
             quant: "IQ4_XS".into(),
             base: "gemma-4-E4B".into(),
+        },
+        ModelSpec {
+            family: ModelFamily::Lfm3,
+            label: "LFM3 1.7B (Q4_K_M)".into(),
+            repo: "LiquidAI/LFM3-1.7B-GGUF".into(),
+            file: "LFM3-1.7B-Q4_K_M.gguf".into(),
+            size_mb: 1100,
+            quant: "Q4_K_M".into(),
+            base: "lfm3-1.7b".into(),
         },
         // 大型モデル枠。E2B/E4B と違い「効率的アーキテクチャ」ではないので
         // ストレートに 27B〜30B 規模。IQ4_XS で 14〜16GB、推論時 KV cache を
@@ -153,6 +164,16 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&ModelFamily::Qwen).unwrap(),
             "\"qwen\""
+        );
+    }
+
+    #[test]
+    fn lfm3_family_round_trips() {
+        let json = serde_json::to_string(&ModelFamily::Lfm3).unwrap();
+        assert_eq!(json, "\"lfm3\"");
+        assert_eq!(
+            serde_json::from_str::<ModelFamily>(&json).unwrap(),
+            ModelFamily::Lfm3
         );
     }
 

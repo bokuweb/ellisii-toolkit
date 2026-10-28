@@ -3,6 +3,7 @@
 //! - **Gemma 4** (3 と互換テンプレ): `<start_of_turn>user\n…<end_of_turn>\n<start_of_turn>model\n`
 //!   (Gemma は system role をサポートせず user に寄せるのが慣例)
 //! - **Qwen** (ChatML, Qwen 2.5 / 3 共通): `<|im_start|>system\n…<|im_end|>\n<|im_start|>user\n…<|im_end|>\n<|im_start|>assistant\n`
+//! - **LFM3**: ChatML with an empty thinking block for non-thinking generation.
 
 use ellisii_llm_core::{ChatRole, LlmRequest, ModelFamily};
 
@@ -17,6 +18,7 @@ pub fn format(family: ModelFamily, req: &LlmRequest) -> FormattedPrompt {
     match family {
         ModelFamily::Gemma4 => format_gemma4(req),
         ModelFamily::Qwen => format_qwen(req),
+        ModelFamily::Lfm3 => format_lfm3(req),
     }
 }
 
@@ -82,6 +84,27 @@ fn format_qwen(req: &LlmRequest) -> FormattedPrompt {
         text,
         stop_sequences: vec!["<|im_end|>".into(), "<|endoftext|>".into()],
     }
+}
+
+// Mirrors LiquidAI/LFM3-1.7B chat_template.jinja with enable_thinking=false.
+// BOS is added by the inference backend, rather than embedded in this string.
+fn format_lfm3(req: &LlmRequest) -> FormattedPrompt {
+    let mut history = req.history.clone();
+    for turn in &mut history {
+        if turn.role == ChatRole::Assistant {
+            let answer = turn
+                .content
+                .rsplit_once("</think>")
+                .map_or(turn.content.as_str(), |(_, answer)| answer.trim());
+            turn.content = format!("<think></think>{answer}");
+        }
+    }
+    let mut prompt = format_qwen(&LlmRequest {
+        history,
+        ..req.clone()
+    });
+    prompt.text.push_str("<think></think>");
+    prompt
 }
 
 #[cfg(test)]
@@ -186,5 +209,48 @@ mod tests {
     fn qwen_omits_empty_system() {
         let p = format(ModelFamily::Qwen, &req("   ", "hi"));
         assert!(!p.text.contains("<|im_start|>system"));
+    }
+    #[test]
+    fn lfm3_disables_thinking_and_strips_previous_reasoning() {
+        let p = format(
+            ModelFamily::Lfm3,
+            &req_with_history(
+                "日本語で回答",
+                vec![
+                    (ChatRole::User, "前の質問"),
+                    (
+                        ChatRole::Assistant,
+                        "<think>private reasoning</think> 回答 ",
+                    ),
+                ],
+                "次の質問",
+            ),
+        );
+        assert_eq!(
+            p.text,
+            concat!(
+                "<|im_start|>system\n日本語で回答<|im_end|>\n",
+                "<|im_start|>user\n前の質問<|im_end|>\n",
+                "<|im_start|>assistant\n<think></think>回答<|im_end|>\n",
+                "<|im_start|>user\n次の質問<|im_end|>\n",
+                "<|im_start|>assistant\n<think></think>"
+            )
+        );
+        assert_eq!(p.stop_sequences, vec!["<|im_end|>", "<|endoftext|>"]);
+    }
+
+    #[test]
+    fn lfm3_plain_assistant_history_gets_empty_thinking_prefix() {
+        let p = format(
+            ModelFamily::Lfm3,
+            &req_with_history(
+                "",
+                vec![(ChatRole::User, "Q"), (ChatRole::Assistant, "A")],
+                "Q2",
+            ),
+        );
+        assert!(p.text.contains("assistant\n<think></think>A<|im_end|>"));
+        assert!(!p.text.contains("<|im_start|>system"));
+        assert!(p.text.ends_with("assistant\n<think></think>"));
     }
 }

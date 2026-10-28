@@ -496,6 +496,7 @@ fn family_tag(f: ModelFamily) -> &'static str {
     match f {
         ModelFamily::Gemma4 => "gemma4",
         ModelFamily::Qwen => "qwen",
+        ModelFamily::Lfm3 => "lfm3",
     }
 }
 
@@ -516,6 +517,44 @@ fn model_file_signature(path: &std::path::Path) -> (u64, i128) {
     (size, mtime_ns)
 }
 
+// A token can contain only part of a UTF-8 character. Preserve incomplete bytes
+// across tokens; replacing each token independently loses Japanese characters.
+#[cfg(feature = "gguf")]
+#[derive(Default)]
+struct Utf8Stream {
+    pending: Vec<u8>,
+}
+
+#[cfg(feature = "gguf")]
+impl Utf8Stream {
+    fn push(&mut self, bytes: &[u8]) -> String {
+        self.pending.extend_from_slice(bytes);
+        let mut result = String::new();
+        loop {
+            match std::str::from_utf8(&self.pending) {
+                Ok(text) => {
+                    result.push_str(text);
+                    self.pending.clear();
+                    break;
+                }
+                Err(error) => {
+                    let valid = error.valid_up_to();
+                    result.push_str(std::str::from_utf8(&self.pending[..valid]).unwrap());
+                    self.pending.drain(..valid);
+                    match error.error_len() {
+                        Some(len) => {
+                            result.push('\u{fffd}');
+                            self.pending.drain(..len);
+                        }
+                        None => break,
+                    }
+                }
+            }
+        }
+        result
+    }
+}
+
 #[cfg(feature = "gguf")]
 mod imp {
     use super::*;
@@ -524,9 +563,7 @@ mod imp {
     use llama_cpp_2::llama_backend::LlamaBackend;
     use llama_cpp_2::llama_batch::LlamaBatch;
     use llama_cpp_2::model::params::LlamaModelParams;
-    #[allow(deprecated)]
-    use llama_cpp_2::model::Special;
-    use llama_cpp_2::model::{AddBos, LlamaModel};
+    use llama_cpp_2::model::LlamaModel;
     use llama_cpp_2::sampling::LlamaSampler;
     use llama_cpp_2::token::LlamaToken;
     use std::num::NonZeroU32;
@@ -534,18 +571,30 @@ mod imp {
     use std::sync::Mutex;
     use std::sync::OnceLock;
 
-    static BACKEND: OnceLock<Arc<LlamaBackend>> = OnceLock::new();
+    static BACKEND: OnceLock<std::result::Result<LlamaBackend, String>> = OnceLock::new();
 
     fn backend_static() -> Result<&'static LlamaBackend> {
-        if let Some(b) = BACKEND.get() {
-            return Ok(b.as_ref());
+        BACKEND
+            .get_or_init(|| LlamaBackend::init().map_err(|e| e.to_string()))
+            .as_ref()
+            .map_err(|e| Error::Llm(format!("backend: {e}")))
+    }
+
+    /// Owns the stable allocation borrowed by contexts. Each session retains an
+    /// Arc until its context has been dropped, including cancelled async calls.
+    struct ModelOwner(&'static LlamaModel);
+
+    impl Drop for ModelOwner {
+        fn drop(&mut self) {
+            // SAFETY: this allocation comes from exactly one Box::leak below.
+            // Contexts retain this owner and drop before their owner field.
+            // No model references escape this private module or outlive an Arc.
+            unsafe {
+                drop(Box::from_raw(
+                    self.0 as *const LlamaModel as *mut LlamaModel,
+                ))
+            };
         }
-        let b = LlamaBackend::init().map_err(|e| Error::Llm(format!("backend: {e}")))?;
-        let _ = BACKEND.set(Arc::new(b));
-        Ok(BACKEND
-            .get()
-            .map(|a| a.as_ref())
-            .expect("backend just inserted"))
     }
 
     /// 1 つの長寿命 `LlamaContext` と、そこに既に decode 済みのトークン列を
@@ -557,6 +606,7 @@ mod imp {
     /// `unsafe impl Send` する。
     struct SessionCell {
         ctx: LlamaContext<'static>,
+        _model: Arc<ModelOwner>,
         /// 直近のターンで KV cache に書き込まれているプロンプトトークン列。
         /// 生成 (= assistant) 部分の token は含めない: 次ターンのプロンプト
         /// (= prompt formatter で再構成されるテキスト) が tokenize 結果と
@@ -568,7 +618,7 @@ mod imp {
 
     pub struct LlamaCppBackend {
         backend: &'static LlamaBackend,
-        model: &'static LlamaModel,
+        model: Arc<ModelOwner>,
         family: ModelFamily,
         n_ctx: u32,
         n_batch: u32,
@@ -600,10 +650,9 @@ mod imp {
                 .with_use_mlock(false);
             let model = LlamaModel::load_from_file(backend, &cfg.model_path, &mp)
                 .map_err(|e| Error::Llm(format!("load model: {e}")))?;
-            // モデルはプロセス終了まで生かしっぱなしにする (LlamaContext<'static>
-            // を作るためには &'static LlamaModel が必要)。Box::leak はここで
-            // 1 回だけ呼ばれるので実質リークではない (= シングルトン的扱い)。
-            let model_static: &'static LlamaModel = Box::leak(Box::new(model));
+            // Keep the model at a stable address for LlamaContext's borrow;
+            // ModelOwner reclaims it after the backend and all sessions finish.
+            let model = Arc::new(ModelOwner(Box::leak(Box::new(model))));
             // KV snapshot の指紋: モデルファイルパス + n_ctx + n_batch + KV q8_0
             // を反映。設定が変わると別ファイルになるので、互換性のないスナップ
             // ショットを誤って load するのを防ぐ。
@@ -617,8 +666,12 @@ mod imp {
                     matches!(s.as_str(), "1" | "true" | "yes" | "on")
                 })
                 .unwrap_or(false);
-            let kv_snapshot = if snapshot_disabled {
-                tracing::info!("kv snapshot disabled via ELLISII_DISABLE_KV_SNAPSHOT");
+            let kv_snapshot = if snapshot_disabled || cfg.family == ModelFamily::Lfm3 {
+                tracing::info!(
+                    "kv snapshot disabled (env={}, family={:?})",
+                    snapshot_disabled,
+                    cfg.family
+                );
                 None
             } else {
                 cfg.cache_dir.as_ref().map(|dir| {
@@ -637,7 +690,7 @@ mod imp {
             );
             Ok(Self {
                 backend,
-                model: model_static,
+                model,
                 family: cfg.family,
                 n_ctx: cfg.n_ctx,
                 n_batch: cfg.n_batch,
@@ -658,7 +711,7 @@ mod imp {
             on_token: Box<dyn FnMut(String) + Send + 'static>,
         ) -> Result<()> {
             let backend = self.backend;
-            let model = self.model;
+            let model_owner = self.model.clone();
             let family = self.family;
             let n_ctx = self.n_ctx;
             let n_batch = self.n_batch;
@@ -670,6 +723,7 @@ mod imp {
             // FnMut を blocking タスクへ送るため Mutex でラップ
             let cb = std::sync::Arc::new(std::sync::Mutex::new(on_token));
             tokio::task::spawn_blocking(move || -> Result<()> {
+                let model = model_owner.0;
                 let prompt = ellisii_llm_prompt::format(family, &req);
                 // n_batch を超えるプロンプトは後段で分割 decode する。
                 // Metal の unified memory が小さい環境で OOM を防ぐため小さめの既定値。
@@ -716,6 +770,7 @@ mod imp {
                         kv_type, kv_type_hint, env_kv, low_spec
                     );
                     let mut cp = LlamaContextParams::default()
+                        .with_no_perf(false)
                         .with_n_ctx(NonZeroU32::new(n_ctx))
                         .with_n_batch(n_batch_eff)
                         .with_n_ubatch(n_batch_eff)
@@ -743,6 +798,7 @@ mod imp {
                         .map_err(|e| Error::Llm(format!("context: {e}")))?;
                     *session_guard = Some(SessionCell {
                         ctx,
+                        _model: model_owner.clone(),
                         cached_prompt: Vec::new(),
                     });
                 }
@@ -782,9 +838,8 @@ mod imp {
                     }
                 }
 
-                let mut tokens: Vec<LlamaToken> = model
-                    .str_to_token(&prompt.text, AddBos::Always)
-                    .map_err(|e| Error::Llm(format!("tokenize: {e}")))?;
+                let vocab = model.vocab();
+                let mut tokens = vocab.tokenize(prompt.text.as_bytes(), true, true);
 
                 // (A) コンテキスト切り詰め:
                 //   出力トークン (req.max_tokens) と少しの余裕を確保した上で、
@@ -836,7 +891,7 @@ mod imp {
                 //     - 過去の user/assistant 履歴
                 //   が再エンコードされなくなる (= 数百〜数千トークン分の re-decode
                 //   をスキップ)。
-                let common_prefix_len = session
+                let mut common_prefix_len = session
                     .cached_prompt
                     .iter()
                     .zip(tokens.iter())
@@ -846,7 +901,14 @@ mod imp {
                 // common_prefix_len 以降をまるごと捨てる。clear_kv_cache_seq は
                 // [p0, p1) の半開区間で消すので p1=None で末尾までクリア。
                 if !session.cached_prompt.is_empty() {
-                    if common_prefix_len == 0 {
+                    // LFM3 contains recurrent convolution state; arbitrary suffix
+                    // rollback is unsupported. Re-evaluate the complete prompt.
+                    if family == ModelFamily::Lfm3
+                        || std::env::var("ELLISII_DISABLE_PROMPT_CACHE").as_deref() == Ok("1")
+                    {
+                        ctx.clear_kv_cache();
+                        common_prefix_len = 0;
+                    } else if common_prefix_len == 0 {
                         // 完全に別系統のプロンプト (system / RAG どちらも新しい)。
                         // `clear_kv_cache_seq(Some(0), Some(0), None)` (= 区間 [0, end) を
                         // seq 0 から削除) を期待していたが、llama-cpp-2 0.1.145 の
@@ -882,6 +944,7 @@ mod imp {
                     common_prefix_len,
                 );
 
+                ctx.reset_timings();
                 // (C) チャンク decode:
                 //   プロンプト (の差分) を n_batch 単位で分けて順に投入する。
                 //   これにより 1 バッチ > n_batch で起きる ggml_abort を防げる。
@@ -942,6 +1005,8 @@ mod imp {
                     ])
                 };
                 let mut produced = String::new();
+                let mut decoder = Utf8Stream::default();
+
                 // produced の何バイトまで cb に渡したかを追跡する。
                 // ストップシーケンス先漏れ防止で「保留」した分は次の token 受信時に
                 // emit するため、prev_len ではなくこの累積カーソルを使う。
@@ -967,16 +1032,11 @@ mod imp {
                     }
                     let next = sampler.sample(&*ctx, batch.n_tokens() - 1);
                     sampler.accept(next);
-                    if model.is_eog_token(next) {
+                    if vocab.is_eog(next) {
                         break;
                     }
-                    // token_to_str は deprecated だが、新 API (token_to_piece) は
-                    // encoding_rs::Decoder 必須でストリーミング用途には過剰。
-                    // 単純なテキスト用途なので deprecated を許容する。
-                    #[allow(deprecated)]
-                    let piece = model
-                        .token_to_str(next, Special::Tokenize)
-                        .unwrap_or_default();
+                    let bytes = vocab.token_to_piece(next, true, None);
+                    let piece = decoder.push(&bytes);
                     produced.push_str(&piece);
 
                     // 停止シーケンス (例 "<end_of_turn>") を含んだら、その手前まで
@@ -1036,7 +1096,8 @@ mod imp {
                         emitted_len = emit_until;
                         last_flush = std::time::Instant::now();
                     }
-                    if stop_hit {
+                    if let Some(stop_at) = stop_at {
+                        produced.truncate(stop_at);
                         break;
                     }
                     batch.clear();
@@ -1057,6 +1118,12 @@ mod imp {
                         }
                     }
                 }
+
+                let timings = ctx.timings();
+                tracing::info!(target: "ellisii_generation", prompt_tokens = tokens.len(),
+                    prompt_eval_tokens = timings.n_p_eval(), prompt_ms = timings.t_p_eval_ms(),
+                    decode_tokens = timings.n_eval(), decode_ms = timings.t_eval_ms(),
+                    "generation complete");
 
                 // 次ターンとの prefix 比較用に「今回 decode した prompt」を保存する。
                 // 生成 (assistant) 部分は含めない (次ターンの prompt は formatter で
@@ -1120,6 +1187,16 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "gguf")]
+    #[test]
+    fn token_bytes_preserve_split_japanese_characters() {
+        let mut decoder = Utf8Stream::default();
+        assert_eq!(decoder.push(&[0xe6]), "");
+        assert_eq!(decoder.push(&[0x97, 0xa5, 0xe6, 0x9c]), "日");
+        assert_eq!(decoder.push(&[0xac, 0xe8, 0xaa, 0x9e]), "本語");
+        assert_eq!(decoder.push(b"!"), "!");
+    }
 
     #[cfg(feature = "gguf")]
     #[test]

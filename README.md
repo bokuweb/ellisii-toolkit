@@ -40,6 +40,44 @@ ellisii-rag = { git = "https://github.com/bokuweb/ellisii-toolkit", rev = "<comm
   (`ingest`)
 - **SDK** — facade crate that re-exports the common surface (`sdk`)
 
+## LFM3 text inference
+
+`ellisii-llm-llamacpp` supports the official
+[LiquidAI/LFM3-1.7B-GGUF](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF)
+with `ModelFamily::Lfm3` and the `gguf` feature (`llamacpp` for `ellisii-sdk`). Download
+`LFM3-1.7B-Q4_K_M.gguf`, then use the same SDK API as Gemma:
+
+```rust,ignore
+use ellisii_sdk::ModelFamily;
+
+let builder = ellisii_sdk::Ellisii::builder()
+    .with_llm_llamacpp("/models/LFM3-1.7B-Q4_K_M.gguf", ModelFamily::Lfm3)?;
+```
+
+The ChatML template disables thinking. LFM3's recurrent state is cleared
+between requests; prompt prefix reuse and disk snapshots are disabled for
+this family. Full conversation history is still supported. Context size
+keeps the existing memory-based defaults; 256K context is not allocated
+automatically.
+
+The bindings are pinned to a small fork updating bundled llama.cpp to
+**b11960 / v0.8.0**, the minimum required by the official model card.
+Gemma and Qwen use the same updated runtime.
+
+For repeatable JSONL inference with native token/timing events:
+
+```sh
+ELLISII_DISABLE_PROMPT_CACHE=1 ELLISII_LLAMA_KV_TYPE=f16 \
+cargo run --release -p ellisii-llm-llamacpp --features gguf \
+  --example gguf_eval -- /models/LFM3-1.7B-Q4_K_M.gguf lfm3 requests.jsonl
+```
+
+Input lines have `{"id":"1","request":{"system":"日本語で答えてください。",
+"history":[],"user":"日本の首都は？","max_tokens":32,"temperature":0.0}}`.
+Responses and wall time are written to stdout. Native prompt/decode token
+counts and milliseconds are emitted as JSON tracing events to stderr.
+`first_chunk_ms` measures the first buffered callback, not raw first-token latency.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](./LICENSE). Free for personal, research,
