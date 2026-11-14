@@ -15,10 +15,10 @@ tokio = { workspace = true }
 sysinfo = { version = "0.32", default-features = false, features = ["system"] }
 
 # llama.cpp バインディング — `gguf` feature 有効時のみリンクする (重い依存)
-llama-cpp-2 = { version = "0.1", optional = true }
+llama-cpp-2 = { git = "https://github.com/bokuweb/llama-cpp-rs", rev = "9b56f2d349673e97d19c5e49746516835a6fa196", default-features = false, optional = true }
 # llama-cpp-2 が再エクスポートしてくれない FLASH_ATTN enum の定数値だけを
 # 参照するために、同 version の sys クレートを直接使う。
-llama-cpp-sys-2 = { version = "=0.1.145", optional = true }
+llama-cpp-sys-2 = { git = "https://github.com/bokuweb/llama-cpp-rs", rev = "9b56f2d349673e97d19c5e49746516835a6fa196", default-features = false, optional = true }
 
 [features]
 default = []
@@ -31,3 +31,10 @@ windows-sys = { version = "0.59", features = ["Win32_System_SystemInformation", 
 
 [dev-dependencies]
 tokio = { workspace = true }
+
+serde_json.workspace = true
+tracing-subscriber = { workspace = true, features = ["json"] }
+
+[[example]]
+name = "gguf_eval"
+required-features = ["gguf"]

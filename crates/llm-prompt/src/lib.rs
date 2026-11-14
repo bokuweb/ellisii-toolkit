@@ -1,8 +1,8 @@
 //! 各 LLM family のチャットテンプレート整形。
 //!
-//! - **Gemma 4** (3 と互換テンプレ): `<start_of_turn>user\n…<end_of_turn>\n<start_of_turn>model\n`
-//!   (Gemma は system role をサポートせず user に寄せるのが慣例)
+//! - **Gemma 4**: `<|turn>role\n…<turn|>`, with a dedicated system turn.
 //! - **Qwen** (ChatML, Qwen 2.5 / 3 共通): `<|im_start|>system\n…<|im_end|>\n<|im_start|>user\n…<|im_end|>\n<|im_start|>assistant\n`
+//! - **LFM3**: ChatML with an empty thinking block for non-thinking generation.
 
 use ellisii_llm_core::{ChatRole, LlmRequest, ModelFamily};
 
@@ -17,45 +17,39 @@ pub fn format(family: ModelFamily, req: &LlmRequest) -> FormattedPrompt {
     match family {
         ModelFamily::Gemma4 => format_gemma4(req),
         ModelFamily::Qwen => format_qwen(req),
+        ModelFamily::Lfm3 => format_lfm3(req),
     }
 }
 
+// Text-only, non-thinking E2B/E4B template from google/gemma-4-E2B-it.
+// BOS is inserted by the inference backend.
 fn format_gemma4(req: &LlmRequest) -> FormattedPrompt {
-    // Gemma は専用 system role が無く、最初の user ターンに system を埋め込む。
     let mut text = String::new();
-    let mut first_user = true;
-    for turn in &req.history {
-        match turn.role {
-            ChatRole::User => {
-                let body = if first_user && !req.system.trim().is_empty() {
-                    first_user = false;
-                    format!("{}\n\n{}", req.system.trim(), turn.content)
-                } else {
-                    first_user = false;
-                    turn.content.clone()
-                };
-                text.push_str(&format!("<start_of_turn>user\n{}<end_of_turn>\n", body));
-            }
-            ChatRole::Assistant => {
-                text.push_str(&format!(
-                    "<start_of_turn>model\n{}<end_of_turn>\n",
-                    turn.content
-                ));
-            }
-        }
+    if !req.system.trim().is_empty() {
+        text.push_str(&format!("<|turn>system\n{}<turn|>\n", req.system.trim()));
     }
-    let user_body = if first_user && !req.system.trim().is_empty() {
-        format!("{}\n\n{}", req.system.trim(), req.user)
-    } else {
-        req.user.clone()
-    };
+    for turn in &req.history {
+        let (role, content) = match turn.role {
+            ChatRole::User => ("user", turn.content.trim().to_string()),
+            ChatRole::Assistant => {
+                // Match the canonical strip_thinking macro for past answers.
+                let answer: String = turn
+                    .content
+                    .split("<channel|>")
+                    .map(|part| part.split("<|channel>").next().unwrap_or_default())
+                    .collect();
+                ("model", answer.trim().to_string())
+            }
+        };
+        text.push_str(&format!("<|turn>{role}\n{content}<turn|>\n"));
+    }
     text.push_str(&format!(
-        "<start_of_turn>user\n{}<end_of_turn>\n<start_of_turn>model\n",
-        user_body
+        "<|turn>user\n{}<turn|>\n<|turn>model\n",
+        req.user.trim()
     ));
     FormattedPrompt {
         text,
-        stop_sequences: vec!["<end_of_turn>".into(), "<start_of_turn>".into()],
+        stop_sequences: vec!["<turn|>".into(), "<|turn>".into()],
     }
 }
 
@@ -82,6 +76,37 @@ fn format_qwen(req: &LlmRequest) -> FormattedPrompt {
         text,
         stop_sequences: vec!["<|im_end|>".into(), "<|endoftext|>".into()],
     }
+}
+
+// Mirrors LiquidAI/LFM3-1.7B chat_template.jinja with enable_thinking=false.
+// BOS is added by the inference backend, rather than embedded in this string.
+fn format_lfm3(req: &LlmRequest) -> FormattedPrompt {
+    format_lfm3_with_thinking(req, false)
+}
+
+/// LFM3 text template with an explicit reasoning mode.
+/// Generated reasoning is included in the stream and counts toward max_tokens.
+pub fn format_lfm3_with_thinking(req: &LlmRequest, enable_thinking: bool) -> FormattedPrompt {
+    let mut history = req.history.clone();
+    for turn in &mut history {
+        if turn.role == ChatRole::Assistant {
+            let answer = turn
+                .content
+                .rsplit_once("</think>")
+                .map_or(turn.content.as_str(), |(_, answer)| answer.trim());
+            turn.content = format!("<think></think>{answer}");
+        }
+    }
+    let mut prompt = format_qwen(&LlmRequest {
+        history,
+        ..req.clone()
+    });
+    prompt.text.push_str(if enable_thinking {
+        "<think>"
+    } else {
+        "<think></think>"
+    });
+    prompt
 }
 
 #[cfg(test)]
@@ -115,26 +140,30 @@ mod tests {
     }
 
     #[test]
-    fn gemma4_renders_history_with_system_in_first_user() {
+    fn gemma4_renders_canonical_system_and_history() {
         let p = format(
             ModelFamily::Gemma4,
             &req_with_history(
-                "be terse",
+                " be terse ",
                 vec![
-                    (ChatRole::User, "前の質問"),
-                    (ChatRole::Assistant, "前の回答"),
+                    (ChatRole::User, " 前の質問 "),
+                    (
+                        ChatRole::Assistant,
+                        "<|channel>thought\nprivate<channel|> 前の回答 ",
+                    ),
                 ],
-                "新しい質問",
+                " 新しい質問 ",
             ),
         );
-        // 1 ターン目に system が入る
-        assert!(p.text.contains("be terse\n\n前の質問"));
-        assert!(p
-            .text
-            .contains("<start_of_turn>model\n前の回答<end_of_turn>"));
-        assert!(p
-            .text
-            .ends_with("<start_of_turn>user\n新しい質問<end_of_turn>\n<start_of_turn>model\n"));
+        assert_eq!(
+            p.text,
+            concat!(
+                "<|turn>system\nbe terse<turn|>\n",
+                "<|turn>user\n前の質問<turn|>\n",
+                "<|turn>model\n前の回答<turn|>\n",
+                "<|turn>user\n新しい質問<turn|>\n<|turn>model\n"
+            )
+        );
     }
 
     #[test]
@@ -156,21 +185,10 @@ mod tests {
     }
 
     #[test]
-    fn gemma4_wraps_user_with_turn_markers() {
-        let p = format(ModelFamily::Gemma4, &req("", "hello"));
-        assert!(p.text.starts_with("<start_of_turn>user\n"));
-        assert!(p.text.contains("hello"));
-        assert!(p.text.ends_with("<start_of_turn>model\n"));
-        assert!(p.stop_sequences.contains(&"<end_of_turn>".to_string()));
-    }
-
-    #[test]
-    fn gemma4_inlines_system_into_user() {
-        let p = format(ModelFamily::Gemma4, &req("be terse", "hi"));
-        assert!(p.text.contains("be terse"));
-        assert!(p.text.contains("hi"));
-        // Gemma は専用 system セグメントを持たない
-        assert!(!p.text.contains("<|im_start|>"));
+    fn gemma4_wraps_user_with_canonical_turn_markers() {
+        let p = format(ModelFamily::Gemma4, &req("   ", "hello"));
+        assert_eq!(p.text, "<|turn>user\nhello<turn|>\n<|turn>model\n");
+        assert_eq!(p.stop_sequences, vec!["<turn|>", "<|turn>"]);
     }
 
     #[test]
@@ -186,5 +204,58 @@ mod tests {
     fn qwen_omits_empty_system() {
         let p = format(ModelFamily::Qwen, &req("   ", "hi"));
         assert!(!p.text.contains("<|im_start|>system"));
+    }
+    #[test]
+    fn lfm3_thinking_uses_canonical_open_reasoning_prefix() {
+        let p = format_lfm3_with_thinking(&req("", "hello"), true);
+        assert_eq!(
+            p.text,
+            "<|im_start|>user\nhello<|im_end|>\n<|im_start|>assistant\n<think>"
+        );
+        assert_eq!(p.stop_sequences, vec!["<|im_end|>", "<|endoftext|>"]);
+    }
+
+    #[test]
+    fn lfm3_disables_thinking_and_strips_previous_reasoning() {
+        let p = format(
+            ModelFamily::Lfm3,
+            &req_with_history(
+                "日本語で回答",
+                vec![
+                    (ChatRole::User, "前の質問"),
+                    (
+                        ChatRole::Assistant,
+                        "<think>private reasoning</think> 回答 ",
+                    ),
+                ],
+                "次の質問",
+            ),
+        );
+        assert_eq!(
+            p.text,
+            concat!(
+                "<|im_start|>system\n日本語で回答<|im_end|>\n",
+                "<|im_start|>user\n前の質問<|im_end|>\n",
+                "<|im_start|>assistant\n<think></think>回答<|im_end|>\n",
+                "<|im_start|>user\n次の質問<|im_end|>\n",
+                "<|im_start|>assistant\n<think></think>"
+            )
+        );
+        assert_eq!(p.stop_sequences, vec!["<|im_end|>", "<|endoftext|>"]);
+    }
+
+    #[test]
+    fn lfm3_plain_assistant_history_gets_empty_thinking_prefix() {
+        let p = format(
+            ModelFamily::Lfm3,
+            &req_with_history(
+                "",
+                vec![(ChatRole::User, "Q"), (ChatRole::Assistant, "A")],
+                "Q2",
+            ),
+        );
+        assert!(p.text.contains("assistant\n<think></think>A<|im_end|>"));
+        assert!(!p.text.contains("<|im_start|>system"));
+        assert!(p.text.ends_with("assistant\n<think></think>"));
     }
 }
